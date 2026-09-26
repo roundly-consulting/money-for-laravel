@@ -121,6 +121,20 @@ it('always downloads on fetch, even over a warm stale cache', function (): void 
         ->and(Cache::get('money:exchange:ecb:feed:daily'))->toHaveKey('2026-09-25');
 });
 
+it('never caches the full-history feed, which no lookup reads', function (): void {
+    fakeEcb();
+
+    // The parsed history is megabytes: over memcached's 1 MB item limit the put fails silently.
+    $rates = ecb()->usingFeed(EcbFeed::History)->fetch(CarbonImmutable::parse('2026-09-17'), CarbonImmutable::parse('2026-09-25'));
+
+    expect($rates)->not->toBeEmpty()
+        ->and(Cache::get('money:exchange:ecb:feed:history'))->toBeNull();
+
+    ecb()->usingFeed(EcbFeed::Recent)->fetch(CarbonImmutable::parse('2026-09-24'), CarbonImmutable::parse('2026-09-25'));
+
+    expect(Cache::get('money:exchange:ecb:feed:recent'))->toBeArray()->toHaveKey('2026-09-24');
+});
+
 it('fetches a feed window and counts currencies the registry does not know', function (): void {
     fakeEcb();
 

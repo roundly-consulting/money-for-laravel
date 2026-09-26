@@ -30,8 +30,9 @@ use RoundlyConsulting\Money\Ratio;
  * document is cached (scalars only) so one request serves every pair.
  *
  * As a source (`money:rates:refresh ecb`): {@see self::fetch()} always performs the HTTP
- * request and then refreshes the parsed-feed cache — it never trusts a cached document,
- * which may predate the ~16:00 CET publication.
+ * request and then refreshes the parsed-feed cache of the daily / 90-day feed (never the
+ * full history, which no lookup reads) — it never trusts a cached document, which may
+ * predate the ~16:00 CET publication.
  */
 final class EcbExchangeRateProvider implements ExchangeRateProvider, ExchangeRateSource
 {
@@ -126,7 +127,12 @@ final class EcbExchangeRateProvider implements ExchangeRateProvider, ExchangeRat
     {
         $days = $this->download($this->feed);
 
-        $this->cache->put($this->cacheKey($this->feed), $days, $this->cacheTtl);
+        // Refresh only what rate() reads. The full history is megabytes that no lookup
+        // reads — and over memcached's 1 MB item limit the put would fail silently.
+        if ($this->feed !== EcbFeed::History) {
+            $this->cache->put($this->cacheKey($this->feed), $days, $this->cacheTtl);
+        }
+
         $this->skippedUnknown = 0;
 
         $euro = $this->registry->get('EUR');
