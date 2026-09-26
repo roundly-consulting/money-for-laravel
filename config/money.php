@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use RoundlyConsulting\Money\Models\CurrencyRate;
 
 return [
 
@@ -112,6 +113,63 @@ return [
         'request' => true,
         'blade' => true,
         'validation' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Exchange rates
+    |--------------------------------------------------------------------------
+    |
+    | Arithmetic never converts implicitly; conversion goes through these
+    | drivers: config (static rates), database (the money_exchange_rates table
+    | — publish money-migrations first), ecb (European Central Bank, no setup)
+    | and chain (tries `chain` in order). Production recipe: publish the
+    | migrations, enable the refresh schedule, set MONEY_EXCHANGE_DRIVER=chain.
+    |
+    */
+
+    'exchange' => [
+        'default' => env('MONEY_EXCHANGE_DRIVER', 'ecb'),
+        'chain' => ['database', 'ecb'],
+        'pivot' => 'EUR',
+        'rounding' => env('MONEY_EXCHANGE_ROUNDING', 'half_even'),
+        'timezone' => env('MONEY_EXCHANGE_TIMEZONE', 'Europe/Berlin'),
+        'max_age_days' => (int) env('MONEY_EXCHANGE_MAX_AGE_DAYS', 7),
+
+        'cache' => [
+            'enabled' => (bool) env('MONEY_EXCHANGE_CACHE', true),
+            'store' => env('MONEY_EXCHANGE_CACHE_STORE'),
+            'ttl' => (int) env('MONEY_EXCHANGE_CACHE_TTL', 3600),
+            'prefix' => 'money:exchange',
+        ],
+
+        'providers' => [
+            'config' => [
+                // Base-keyed decimal strings: ['EUR' => ['USD' => '1.0854']].
+                'rates' => [],
+            ],
+            'database' => [
+                'table' => env('MONEY_EXCHANGE_TABLE', 'money_exchange_rates'),
+                'model' => env('MONEY_EXCHANGE_MODEL', CurrencyRate::class),
+            ],
+            'ecb' => [
+                'daily_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',
+                'recent_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml',
+                'history_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml',
+                'timeout' => (int) env('MONEY_ECB_TIMEOUT', 10),
+                'retries' => 2,
+                'max_bytes' => 33554432,
+                'cache_ttl' => 3600,
+            ],
+        ],
+
+        'refresh' => [
+            // ECB publishes around 16:00 CET on TARGET working days.
+            'schedule' => (bool) env('MONEY_EXCHANGE_SCHEDULE', false),
+            'cron' => '30 16 * * 1-5',
+            'timezone' => 'Europe/Berlin',
+            'source' => 'ecb',
+        ],
     ],
 
 ];

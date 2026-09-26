@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\Factory as ValidationFactory;
+use RoundlyConsulting\Money\Commands\ConvertMoneyCommand;
 use RoundlyConsulting\Money\Commands\ListCurrenciesCommand;
+use RoundlyConsulting\Money\Commands\PruneExchangeRatesCommand;
+use RoundlyConsulting\Money\Commands\RefreshExchangeRatesCommand;
+use RoundlyConsulting\Money\Contracts\CurrencyConverter;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
+use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Contracts\MoneyFormatter;
 use RoundlyConsulting\Money\Contracts\MoneyParser;
 use RoundlyConsulting\Money\Currencies\DefaultCurrencyRegistry;
@@ -15,6 +21,8 @@ use RoundlyConsulting\Money\Discounts\DiscountAllocator;
 use RoundlyConsulting\Money\Enums\FormatterDriver;
 use RoundlyConsulting\Money\Exceptions\FormatterUnavailable;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
+use RoundlyConsulting\Money\Exchange\Converter;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Formatting\DecimalMoneyFormatter;
 use RoundlyConsulting\Money\Formatting\IntlMoneyFormatter;
 use RoundlyConsulting\Money\Parsing\LocalizedMoneyParser;
@@ -36,8 +44,12 @@ final class MoneyServiceProvider extends PackageServiceProvider
             ->name('money')
             ->hasConfigFile()
             ->hasTranslations()
+            ->hasMigrations()
             ->hasCommands([
                 ListCurrenciesCommand::class,
+                RefreshExchangeRatesCommand::class,
+                PruneExchangeRatesCommand::class,
+                ConvertMoneyCommand::class,
             ])
             ->contributesToAbout(fn (): array => $this->about());
     }
@@ -54,6 +66,12 @@ final class MoneyServiceProvider extends PackageServiceProvider
         });
 
         $this->app->singleton(DiscountAllocator::class);
+
+        $this->app->singleton(ExchangeManager::class, static fn (Application $app): ExchangeManager => new ExchangeManager($app));
+        $this->app->singleton(ExchangeRateProvider::class, static fn (Application $app): ExchangeRateProvider => $app->make(ExchangeManager::class));
+
+        // Bound, not a singleton: a fresh converter picks up Exchange::fake() every time.
+        $this->app->bind(CurrencyConverter::class, static fn (Application $app): CurrencyConverter => new Converter($app->make(ExchangeRateProvider::class)));
 
         $this->app->singleton(MoneyParser::class, static fn (Application $app): MoneyParser => new LocalizedMoneyParser($app->make(CurrencyRegistry::class)));
     }
@@ -81,6 +99,16 @@ final class MoneyServiceProvider extends PackageServiceProvider
 
         if (config('money.macros.blade') !== false) {
             $this->registerBladeDirective('money', BladeMoney::compile(...));
+        }
+
+        if (config('money.exchange.refresh.schedule') === true) {
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                $schedule->command('money:rates:refresh', [(string) config('money.exchange.refresh.source')])
+                    ->cron((string) config('money.exchange.refresh.cron'))
+                    ->timezone((string) config('money.exchange.refresh.timezone'))
+                    ->withoutOverlapping()
+                    ->onOneServer();
+            });
         }
     }
 
@@ -113,6 +141,10 @@ final class MoneyServiceProvider extends PackageServiceProvider
             'Default currency' => (string) config('money.default_currency'),
             'Currencies' => sprintf('ISO %d / custom %d', count($registry->iso()), count($registry->custom())),
             'Formatter' => self::formatterDriver()->value,
+            'Exchange driver' => (string) config('money.exchange.default'),
+            'Rates schedule' => config('money.exchange.refresh.schedule') === true
+                ? (string) config('money.exchange.refresh.cron').' ('.(string) config('money.exchange.refresh.timezone').')'
+                : 'off',
         ];
     }
 }

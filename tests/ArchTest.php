@@ -2,11 +2,20 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Testing\Arch\ArchPresets;
 
 ArchPresets::strictTypes('RoundlyConsulting\Money');
-ArchPresets::finalByDefault('RoundlyConsulting\Money');
+
+// The swappable rate model is the one intentional extension point (MoneyException is
+// abstract, which the preset already excludes).
+ArchPresets::finalByDefault('RoundlyConsulting\Money', [CurrencyRate::class]);
+ArchPresets::swappableModelsAreNotFinal([CurrencyRate::class => 'money.exchange.providers.database.model']);
 ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Money');
+ArchPresets::modelsResolveThroughSeam(__DIR__.'/../src', 'Support', ['money.exchange.providers.database.model']);
+
+// Not adopted: morphColumnsUseTheSeam — the rates migration has no polymorphic column, so
+// the preset would be green forever (vacuous).
 
 /**
  * The Dependency Policy as a test. No `alsoAllow`: money's `require` ships only

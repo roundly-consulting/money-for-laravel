@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money;
 
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;
 use RoundingMode;
+use RoundlyConsulting\Money\Contracts\CurrencyConverter;
 use RoundlyConsulting\Money\Contracts\MoneyFormatter;
 use RoundlyConsulting\Money\Contracts\MoneyParser;
 use RoundlyConsulting\Money\Exceptions\CurrencyMismatch;
@@ -492,6 +494,15 @@ final readonly class Money implements Arrayable, JsonSerializable, Stringable
     public function format(?string $locale = null, ?FormatOptions $options = null): string
     {
         return app(MoneyFormatter::class)->format($this, $locale, $options);
+    }
+
+    /**
+     * Convert through the bound CurrencyConverter (the configured exchange driver); rounds
+     * once, default money.exchange.rounding.
+     */
+    public function convertTo(Currency|string $currency, ?CarbonInterface $on = null, ?RoundingMode $rounding = null): self
+    {
+        return app(CurrencyConverter::class)->convert($this, $currency, $on, $rounding);
     }
 
     // ── serialization ───────────────────────────────────────────────────────

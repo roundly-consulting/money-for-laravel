@@ -15,6 +15,8 @@ it('ships exactly the config keys it reads', function (): void {
             'money.rounding',
             'money.formatting.driver',
             'money.formatting.display',
+            'money.exchange.rounding',
+            'money.exchange.providers.database.model',
         ],
     ]);
 });

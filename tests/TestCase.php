@@ -16,9 +16,23 @@ abstract class TestCase extends PackageTestCase
         return [MoneyServiceProvider::class];
     }
 
-    /** @return list<string> */
+    /** @return list<class-string<ServiceProvider>|string> */
     protected function migrationSources(): array
     {
-        return [__DIR__.'/Fixtures/migrations'];
+        return [MoneyServiceProvider::class, __DIR__.'/Fixtures/migrations'];
+    }
+
+    /**
+     * A fake provider credential, so the about section is proven never to render provider
+     * config.
+     *
+     * @return array<string, mixed>
+     */
+    protected function configBeforeBoot(): array
+    {
+        return [
+            'cache.default' => 'array',
+            'money.exchange.providers.custom.key' => 'sk_test_money_dummy_7f3a',
+        ];
     }
 }
