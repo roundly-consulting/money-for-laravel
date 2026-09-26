@@ -63,7 +63,7 @@ php artisan vendor:publish --tag="money-translations"
 | `default_currency` | `'EUR'` | `MONEY_DEFAULT_CURRENCY` | Currency for `Request::money()` without one, the parser without a currency token, `money_amount` without a parameter. |
 | `currencies.iso` | `true` | `MONEY_ISO_CURRENCIES` | Seed the registry with the bundled ISO 4217 list (165 currencies). `false` = custom only. |
 | `currencies.custom` | `[]` | — | Extra currencies: `'PTS' => ['exponent' => 0, 'name' => 'Points', 'symbol' => 'pts']`. Exponent 0..18. |
-| `currencies.allowed` | `null` | — | Default allow-list for the `CurrencyCode` / `currency_code` input rule (`null` = the whole registry). Never restricts stored data. |
+| `currencies.allowed` | `null` | — | Allow-list for currencies chosen by input: the `CurrencyCode` / `currency_code` rule and `MoneyAmount::inCurrencyFrom()` (`null` = the whole registry). Never restricts stored data. |
 | `schema.currency_length` | `3` | `MONEY_CURRENCY_LENGTH` | varchar length of currency columns (3..10) and the longest custom code the registry accepts. Fixed once migrated. |
 | `schema.precision` | `38` | `MONEY_PRECISION` | `P` of the `decimal(P, 0)` amount columns `$table->money()` creates (19..65). The cast and the `MoneyAmount` rule enforce the same limit. Fixed once migrated. |
 | `rounding` | `'half_away_from_zero'` | `MONEY_ROUNDING` | Service-level default rounding (formatter digit reduction, `avgMoney`). Value objects never read config. |

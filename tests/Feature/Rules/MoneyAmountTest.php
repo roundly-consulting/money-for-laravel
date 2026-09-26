@@ -77,3 +77,15 @@ it('fails a Money bound in another currency than the input chose, instead of thr
     expect(amountErrors('5', $rule, ['currency' => 'USD']))->toBe(['The price field must be a supported currency.'])
         ->and(amountErrors('5', MoneyAmount::inCurrencyFrom('currency')->max(Money::ofMajor('10', 'EUR')), ['currency' => 'EUR']))->toBe([]);
 });
+
+it('holds an input-chosen currency to money.currencies.allowed', function (): void {
+    config(['money.currencies.allowed' => ['eur', 'CZK']]);
+
+    $rule = fn () => MoneyAmount::inCurrencyFrom('currency');
+
+    expect(amountErrors('5', $rule(), ['currency' => 'USD']))->toBe(['The price field must be a supported currency.'])
+        ->and(amountErrors('5', $rule(), ['currency' => 'eur']))->toBe([])
+        ->and(amountErrors('5', $rule(), ['currency' => 'CZK']))->toBe([])
+        // A currency the developer fixed is not input, so the allow-list does not apply.
+        ->and(amountErrors('5', MoneyAmount::in('USD')))->toBe([]);
+});

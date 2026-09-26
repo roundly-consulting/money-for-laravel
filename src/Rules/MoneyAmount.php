@@ -27,7 +27,8 @@ use RoundlyConsulting\Money\Support\Schema;
  * Accepts an int, a plain decimal string or a float (via its shortest round-trip decimal;
  * floats at or above 2^53 are refused). Rejects exponent notation, grouping (unless
  * `localized()`), more fraction digits than the currency has, more minor digits than
- * `money.schema.precision`, negatives (unless `allowNegative()`) and unknown currencies.
+ * `money.schema.precision`, negatives (unless `allowNegative()`) and unknown currencies —
+ * with `inCurrencyFrom()`, also currencies outside `money.currencies.allowed`.
  *
  * String alias: `money_amount:EUR`.
  */
@@ -181,13 +182,24 @@ final class MoneyAmount implements DataAwareRule, ValidationRule
 
     private function resolveCurrency(): ?Currency
     {
-        $currency = $this->currencyField === null ? $this->currency : data_get($this->data, $this->currencyField);
+        if ($this->currencyField === null) {
+            return $this->currency instanceof Currency
+                ? $this->currency
+                : app(CurrencyRegistry::class)->find((string) $this->currency);
+        }
 
-        if ($currency instanceof Currency) {
+        // The input picks the currency, so it is held to the input allow-list.
+        $input = data_get($this->data, $this->currencyField);
+        $currency = is_string($input) ? app(CurrencyRegistry::class)->find($input) : null;
+        $allowed = config('money.currencies.allowed');
+
+        if ($currency === null || ! is_array($allowed)) {
             return $currency;
         }
 
-        return is_string($currency) ? app(CurrencyRegistry::class)->find($currency) : null;
+        $codes = array_map(static fn (mixed $code): string => strtoupper(trim(is_string($code) ? $code : '')), $allowed);
+
+        return in_array($currency->code, $codes, true) ? $currency : null;
     }
 
     private function money(mixed $value, Currency $currency, Closure $fail): ?Money

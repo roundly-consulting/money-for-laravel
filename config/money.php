@@ -36,8 +36,9 @@ return [
         'iso' => (bool) env('MONEY_ISO_CURRENCIES', true),
         'custom' => [],
 
-        // Default allow-list for the CurrencyCode / money_amount input rules (null = the
-        // whole registry). It never restricts reading stored data.
+        // Allow-list for currencies chosen by input: the CurrencyCode rule (currency_code)
+        // and MoneyAmount::inCurrencyFrom() (null = the whole registry). It never restricts
+        // reading stored data.
         'allowed' => null,
     ],
 
