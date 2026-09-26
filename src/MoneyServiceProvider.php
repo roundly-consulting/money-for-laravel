@@ -11,6 +11,7 @@ use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
 use RoundlyConsulting\Money\Contracts\MoneyFormatter;
 use RoundlyConsulting\Money\Contracts\MoneyParser;
 use RoundlyConsulting\Money\Currencies\DefaultCurrencyRegistry;
+use RoundlyConsulting\Money\Discounts\DiscountAllocator;
 use RoundlyConsulting\Money\Enums\FormatterDriver;
 use RoundlyConsulting\Money\Exceptions\FormatterUnavailable;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
@@ -51,6 +52,8 @@ final class MoneyServiceProvider extends PackageServiceProvider
             FormatterDriver::Intl => new IntlMoneyFormatter,
             default => new DecimalMoneyFormatter,
         });
+
+        $this->app->singleton(DiscountAllocator::class);
 
         $this->app->singleton(MoneyParser::class, static fn (Application $app): MoneyParser => new LocalizedMoneyParser($app->make(CurrencyRegistry::class)));
     }
