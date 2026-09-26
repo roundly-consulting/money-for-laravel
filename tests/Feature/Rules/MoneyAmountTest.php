@@ -58,3 +58,22 @@ it('translates messages to Slovak', function (): void {
 
     expect(amountErrors('-1', MoneyAmount::in('EUR')))->toBe(['Pole price nesmie byť záporné.']);
 });
+
+it('applies major-unit bounds exactly in a sibling currency with fewer decimals', function (): void {
+    $rule = fn () => MoneyAmount::inCurrencyFrom('currency')->min('0.01')->max('99999.99');
+
+    // In JPY "at least 0.01" means at least 1 and "at most 99999.99" means at most 99999.
+    expect(amountErrors('0', $rule(), ['currency' => 'JPY']))->toBe(['The price field must be at least 1.'])
+        ->and(amountErrors('1', $rule(), ['currency' => 'JPY']))->toBe([])
+        ->and(amountErrors('99999', $rule(), ['currency' => 'JPY']))->toBe([])
+        ->and(amountErrors('100000', $rule(), ['currency' => 'JPY']))->toBe(['The price field must not be greater than 99999.'])
+        ->and(amountErrors('-3', MoneyAmount::in('JPY')->allowNegative()->min('-2.5')))->toBe(['The price field must be at least -2.'])
+        ->and(amountErrors('0.01', $rule(), ['currency' => 'EUR']))->toBe([]);
+});
+
+it('fails a Money bound in another currency than the input chose, instead of throwing', function (): void {
+    $rule = MoneyAmount::inCurrencyFrom('currency')->min(Money::ofMajor('1', 'EUR'));
+
+    expect(amountErrors('5', $rule, ['currency' => 'USD']))->toBe(['The price field must be a supported currency.'])
+        ->and(amountErrors('5', MoneyAmount::inCurrencyFrom('currency')->max(Money::ofMajor('10', 'EUR')), ['currency' => 'EUR']))->toBe([]);
+});

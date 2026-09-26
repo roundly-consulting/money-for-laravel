@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Money\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
+use RoundingMode;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
 use RoundlyConsulting\Money\Contracts\MoneyParser;
 use RoundlyConsulting\Money\Currency;
@@ -153,7 +154,17 @@ final class MoneyAmount implements DataAwareRule, ValidationRule
             return;
         }
 
-        $min = $this->bound($this->min, $currency);
+        // With inCurrencyFrom() the input picks the currency: a Money bound in another
+        // currency cannot be compared, which is a validation failure, not an exception.
+        foreach ([$this->min, $this->max] as $bound) {
+            if ($bound instanceof Money && ! $bound->currency()->equals($currency)) {
+                $fail('money::validation.currency')->translate();
+
+                return;
+            }
+        }
+
+        $min = $this->bound($this->min, $currency, RoundingMode::PositiveInfinity);
 
         if ($min !== null && $money->isLessThan($min)) {
             $fail('money::validation.min')->translate(['min' => $min->toDecimal()]);
@@ -161,7 +172,7 @@ final class MoneyAmount implements DataAwareRule, ValidationRule
             return;
         }
 
-        $max = $this->bound($this->max, $currency);
+        $max = $this->bound($this->max, $currency, RoundingMode::NegativeInfinity);
 
         if ($max !== null && $money->isGreaterThan($max)) {
             $fail('money::validation.max')->translate(['max' => $max->toDecimal()]);
@@ -217,12 +228,17 @@ final class MoneyAmount implements DataAwareRule, ValidationRule
         }
     }
 
-    private function bound(Money|int|string|null $bound, Currency $currency): ?Money
+    /**
+     * A major-unit bound in the validated currency. A bound finer than the currency (0.01 in
+     * JPY) rounds inwards — up for min, down for max — which is exact for whole minor units:
+     * "at least 0.01 JPY" is "at least 1 JPY".
+     */
+    private function bound(Money|int|string|null $bound, Currency $currency, RoundingMode $inwards): ?Money
     {
         if ($bound === null || $bound instanceof Money) {
             return $bound;
         }
 
-        return Money::ofMajor($bound, $currency);
+        return Money::ofMajor($bound, $currency, $inwards);
     }
 }
