@@ -3,21 +3,16 @@
 declare(strict_types=1);
 
 /**
- * The config contract, pinned in both directions from day one:
- *
- *  - forward — every key the code reads is shipped. A key the code reads but the file never
- *    ships is a null in every application that did not publish the config.
- *  - reverse — every shipped leaf is read. A key nothing reads is dead config that lies to
- *    the host: it invites somebody to set it, and then nothing happens.
- *
- * Keep both directions green as the package's real keys replace the placeholder one. Reads
- * are token-scraped from `src/` — plus a sibling `database/` and `routes/` when they exist —
- * so a key read from outside that scope (a view, a directory this call does not name) scrapes
- * as unread and is reported exactly like a dead one: widen the scanned directories rather
- * than allow-list it. The call below passes no options; `toSatisfyConfigContract` in
- * testing-for-laravel documents the ones a growing package needs, such as excluding a file
- * that renders keys instead of reading them.
+ * The config contract, pinned in both directions: every key the code reads is shipped,
+ * every shipped leaf is read. Reads that are not a literal `config('money.…')` call —
+ * the toolkit's Config::using() validators, RoundingModes::fromConfig() and
+ * ModelResolver::for() — are invisible to the token scraper, so each one is named
+ * exactly here (never a blanket `money.` prefix).
  */
 it('ships exactly the config keys it reads', function (): void {
-    expect(__DIR__.'/../config/money.php')->toSatisfyConfigContract(__DIR__.'/../src');
+    expect(__DIR__.'/../config/money.php')->toSatisfyConfigContract(__DIR__.'/../src', [
+        'extraReadPrefixes' => [
+            'money.schema.currency_length',
+        ],
+    ]);
 });
