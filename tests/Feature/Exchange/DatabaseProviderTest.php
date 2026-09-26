@@ -59,3 +59,26 @@ it('stores dates as Y-m-d so string comparison works on every engine', function 
     expect(substr((string) $raw, 0, 10))->toBe('2026-09-25')
         ->and(CurrencyRate::query()->effectiveOnOrBefore(CarbonImmutable::parse('2026-09-25'))->pair('EUR', 'CZK')->count())->toBe(1);
 });
+
+it('measures staleness in calendar days, whatever the app and exchange timezones', function (string $appTimezone, string $exchangeTimezone): void {
+    config(['app.timezone' => $appTimezone]);
+    date_default_timezone_set($appTimezone);
+
+    try {
+        // Monday the 28th everywhere: the Monday-before-last row is exactly max_age_days old.
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-28 12:00', 'UTC'));
+        CurrencyRate::factory()->pair('EUR', 'CHF', '0.93')->on('2026-09-21')->create();
+        CurrencyRate::factory()->pair('EUR', 'SEK', '11.2')->on('2026-09-20')->create();
+
+        $provider = new DatabaseExchangeRateProvider(maxAgeDays: 7, timezone: $exchangeTimezone);
+
+        expect($provider->rate(Currency::of('EUR'), Currency::of('CHF'))->date->toDateString())->toBe('2026-09-21')
+            ->and(fn () => $provider->rate(Currency::of('EUR'), Currency::of('SEK')))->toThrow(ExchangeRateUnavailable::class, 'older than 7 days');
+    } finally {
+        date_default_timezone_set('UTC');
+    }
+})->with([
+    'app UTC, exchange Berlin' => ['UTC', 'Europe/Berlin'],
+    'app UTC, exchange New York' => ['UTC', 'America/New_York'],
+    'app Tokyo, exchange Berlin' => ['Asia/Tokyo', 'Europe/Berlin'],
+]);

@@ -67,7 +67,9 @@ final class DatabaseExchangeRateProvider implements ExchangeRateProvider
         $direct = $this->row($from, $to, $date);
         $rate = $direct?->toExchangeRate() ?? $this->row($to, $from, $date)?->toExchangeRate()->invert();
 
-        if ($rate !== null && $rate->date->lessThan($date->subDays($this->maxAgeDays))) {
+        // Calendar dates, not instants: a row's date is midnight in the app timezone while
+        // `$date` is midnight in the exchange timezone, which shifted the cut-off by a day.
+        if ($rate !== null && $rate->date->toDateString() < $date->subDays($this->maxAgeDays)->toDateString()) {
             throw ExchangeRateUnavailable::stale($rate, $this->maxAgeDays);
         }
 
