@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Http;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 
 beforeEach(function (): void {
@@ -49,3 +50,20 @@ it('converts from the command with rate details', function (): void {
         ->expectsOutputToContain('2026-09-24')
         ->assertSuccessful();
 });
+
+it('refuses dates that are not real Y-m-d dates instead of shifting or crashing', function (string $command, array $arguments): void {
+    // 2026-02-30 used to roll over to 2026-03-02 (pruning two extra days); 2026/09/10 used
+    // to crash with a Carbon format exception.
+    Http::preventStrayRequests();
+
+    $this->artisan($command, $arguments)->assertExitCode(2);
+
+    expect(CurrencyRate::query()->count())->toBe(3);
+})->with([
+    'prune overflow' => ['money:rates:prune', ['--before' => '2026-09-31']],
+    'prune slashes' => ['money:rates:prune', ['--before' => '2026/09/10']],
+    'prune keep-days junk' => ['money:rates:prune', ['--keep-days' => '10d']],
+    'convert overflow' => ['money:convert', ['amount' => '10', 'from' => 'EUR', 'to' => 'USD', '--date' => '2026-02-30']],
+    'refresh from overflow' => ['money:rates:refresh', ['--from' => '2026-02-30']],
+    'refresh to junk' => ['money:rates:refresh', ['--to' => 'yesterday']],
+]);

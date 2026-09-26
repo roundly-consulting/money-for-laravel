@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money\Commands;
 
-use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
 use RoundlyConsulting\Money\Actions\RefreshExchangeRatesAction;
 use RoundlyConsulting\Money\DataTransferObjects\RefreshExchangeRatesData;
 use RoundlyConsulting\Money\Enums\EcbFeed;
 use RoundlyConsulting\Money\Jobs\RefreshExchangeRates;
+use RoundlyConsulting\Money\Support\DateOption;
 
 final class RefreshExchangeRatesCommand extends Command implements Isolatable
 {
@@ -34,8 +34,16 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
             return self::INVALID;
         }
 
-        $from = $this->date('from');
-        $to = $this->date('to');
+        $from = DateOption::parse($this->option('from'));
+        $to = DateOption::parse($this->option('to'));
+
+        foreach (['from' => $from, 'to' => $to] as $option => $date) {
+            if (DateOption::given($this->option($option)) && $date === null) {
+                $this->components->error("The --{$option} option must be a real date as Y-m-d.");
+
+                return self::INVALID;
+            }
+        }
 
         if ($this->option('queue')) {
             dispatch(new RefreshExchangeRates($source, $feed->value, $from?->toDateString(), $to?->toDateString()));
@@ -53,13 +61,6 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
         $this->components->twoColumnDetail('Latest date', $result->latestDate?->toDateString() ?? '—');
 
         return self::SUCCESS;
-    }
-
-    private function date(string $option): ?CarbonImmutable
-    {
-        $value = $this->option($option);
-
-        return is_string($value) && $value !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $value) ?: null : null;
     }
 
     /** Console input as a string, whatever the analyser infers for it. */

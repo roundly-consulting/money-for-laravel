@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use RoundlyConsulting\Money\Actions\PruneExchangeRatesAction;
 use RoundlyConsulting\Money\DataTransferObjects\PruneExchangeRatesData;
+use RoundlyConsulting\Money\Support\DateOption;
 
 final class PruneExchangeRatesCommand extends Command
 {
@@ -24,7 +25,7 @@ final class PruneExchangeRatesCommand extends Command
         $before = $this->before();
 
         if ($before === null) {
-            $this->components->error('Pass --before=Y-m-d or --keep-days=N.');
+            $this->components->error('Pass --before=Y-m-d (a real date) or --keep-days=N.');
 
             return self::INVALID;
         }
@@ -41,8 +42,8 @@ final class PruneExchangeRatesCommand extends Command
         $before = $this->option('before');
         $keepDays = $this->option('keep-days');
 
-        if (is_string($before) && $before !== '') {
-            return CarbonImmutable::createFromFormat('!Y-m-d', $before) ?: null;
+        if (DateOption::given($before)) {
+            return DateOption::parse($before);
         }
 
         if (is_string($keepDays) && ctype_digit($keepDays)) {

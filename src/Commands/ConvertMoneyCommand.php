@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money\Commands;
 
-use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use RoundlyConsulting\Money\Exchange\Converter;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Support\DateOption;
 
 final class ConvertMoneyCommand extends Command
 {
@@ -26,7 +26,14 @@ final class ConvertMoneyCommand extends Command
         $date = $this->option('date');
         $driver = $this->option('driver');
 
-        $on = is_string($date) && $date !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $date) ?: null : null;
+        $on = DateOption::parse($date);
+
+        if (DateOption::given($date) && $on === null) {
+            $this->components->error('The --date option must be a real date as Y-m-d.');
+
+            return self::INVALID;
+        }
+
         $money = Money::ofMajor(self::text($this->argument('amount')), self::text($this->argument('from')));
 
         $conversion = (new Converter($exchange->provider(is_string($driver) && $driver !== '' ? $driver : null)))
