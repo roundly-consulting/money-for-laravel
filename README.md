@@ -1,10 +1,12 @@
+<!-- roundly-hero:start -->
 <p align="center">
-  <a href="https://roundly-consulting.com/open-source">
-    <img src="art/hero.png" alt="Money For Laravel — Roundly open source" width="100%">
+  <a href="https://roundly-consulting.com/open-source/docs/money-for-laravel?utm_source=github&utm_medium=readme&utm_campaign=open-source&utm_content=money-for-laravel">
+    <img src="art/hero.png" alt="Money for Laravel — Roundly open source" width="100%">
   </a>
 </p>
+<!-- roundly-hero:end -->
 
-# money-for-laravel
+# Money for Laravel
 
 Immutable, arbitrary-precision `Money` and `Currency` value objects for Laravel: ISO 4217 and
 custom currencies, exact decimal parsing, rounding-safe arithmetic and allocation, locale
