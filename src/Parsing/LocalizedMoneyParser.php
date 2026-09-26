@@ -19,8 +19,9 @@ use RoundlyConsulting\Money\Money;
  *
  * 1. Spaces (incl. NBSP, NNBSP, thin space) and apostrophes are grouping candidates, U+2212
  *    is a minus, bidi marks are dropped.
- * 2. An optional currency token at the start or the end — a code (`EUR`) or a registry
- *    symbol (`€`). An ambiguous symbol (`$`) needs the `$currency` argument.
+ * 2. An optional currency token at the start or the end — a code (`EUR`), a registry
+ *    symbol (`€`) or, for the `$currency` argument, its symbol in the locale (`Ft` in hu).
+ *    An ambiguous symbol (`$`) needs the `$currency` argument.
  * 3. A leading/trailing `-`/`+` or accounting parentheses set the sign.
  * 4. Grouping is accepted only in the integer part and only in well-formed groups.
  * 5. The canonical decimal goes to Money::ofMajor(): excess precision is refused.
@@ -28,6 +29,12 @@ use RoundlyConsulting\Money\Money;
 final class LocalizedMoneyParser implements MoneyParser
 {
     public const int MAX_LENGTH = 128;
+
+    /** Spaces become spaces, U+2019 an apostrophe, U+2212 a minus; bidi marks go. */
+    private const array NORMALIZE = [
+        "\u{00A0}" => ' ', "\u{202F}" => ' ', "\u{2009}" => ' ', "\u{2019}" => "'",
+        "\u{2212}" => '-', "\u{200E}" => '', "\u{200F}" => '', "\u{061C}" => '',
+    ];
 
     public function __construct(private readonly CurrencyRegistry $registry) {}
 
@@ -40,10 +47,7 @@ final class LocalizedMoneyParser implements MoneyParser
         $locale = Locales::resolve($locale);
         $expected = $currency === null ? null : ($currency instanceof Currency ? $currency : $this->registry->get($currency));
 
-        $normalized = strtr(trim($input), [
-            "\u{00A0}" => ' ', "\u{202F}" => ' ', "\u{2009}" => ' ', "\u{2019}" => "'",
-            "\u{2212}" => '-', "\u{200E}" => '', "\u{200F}" => '', "\u{061C}" => '',
-        ]);
+        $normalized = strtr(trim($input), self::NORMALIZE);
 
         if (preg_match('/\A(?<prefix>[^0-9]*)(?<number>[0-9](?:.*[0-9])?)(?<suffix>[^0-9]*)\z/su', $normalized, $parts) !== 1) {
             throw InvalidAmount::unparsable($input, 'no digits');
@@ -55,7 +59,7 @@ final class LocalizedMoneyParser implements MoneyParser
         $negative = $this->negative($input, $prefix, $suffix);
         $token = $this->token($input, $prefix, $suffix);
 
-        $detected = $token === '' ? null : $this->currencyFor($token, $expected);
+        $detected = $token === '' ? null : $this->currencyFor($token, $expected, $locale);
 
         if ($detected !== null && $expected !== null && ! $detected->equals($expected)) {
             throw CurrencyMismatch::between($detected, $expected);
@@ -100,13 +104,16 @@ final class LocalizedMoneyParser implements MoneyParser
         return $prefixToken.$suffixToken;
     }
 
-    private function currencyFor(string $token, ?Currency $expected): Currency
+    private function currencyFor(string $token, ?Currency $expected, string $locale): Currency
     {
         if (preg_match('/\A[A-Za-z][A-Za-z0-9]{1,9}\z/', $token) === 1 && $this->registry->has($token)) {
             return $this->registry->get($token);
         }
 
-        if ($expected !== null && ($expected->displaySymbol() === $token || $expected->code === strtoupper($token))) {
+        // The expected currency's symbol — the registry's, or the locale's own ("Ft" in hu,
+        // "￥" in ja_JP), so input formatted in that locale reads back.
+        if ($expected !== null && ($expected->displaySymbol() === $token || $expected->code === strtoupper($token)
+            || $this->localSymbol($expected, $locale) === $token)) {
             return $expected;
         }
 
@@ -120,6 +127,13 @@ final class LocalizedMoneyParser implements MoneyParser
             0 => throw InvalidAmount::unparsable($token, 'unknown currency'),
             default => throw InvalidAmount::ambiguousCurrency($token),
         };
+    }
+
+    private function localSymbol(Currency $currency, string $locale): ?string
+    {
+        $symbol = NumberSymbols::currencySymbol($locale, $currency);
+
+        return $symbol === null ? null : trim(strtr($symbol, self::NORMALIZE));
     }
 
     /**

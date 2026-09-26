@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money\Parsing;
 
 use NumberFormatter;
+use RoundlyConsulting\Money\Currency;
 
 /**
  * A locale's number separators and grouping sizes, as the parser needs them.
@@ -37,5 +38,21 @@ final readonly class NumberSymbols
             (int) $formatter->getAttribute(NumberFormatter::GROUPING_SIZE),
             (int) $formatter->getAttribute(NumberFormatter::SECONDARY_GROUPING_SIZE),
         );
+    }
+
+    /** The locale's own symbol for an ISO currency ("Ft" in hu); null without ext-intl. */
+    public static function currencySymbol(string $locale, Currency $currency): ?string
+    {
+        if (! extension_loaded('intl') || ! $currency->iso) {
+            return null;
+        }
+
+        $formatter = new NumberFormatter($locale, NumberFormatter::CURRENCY);
+        $formatter->setTextAttribute(NumberFormatter::CURRENCY_CODE, $currency->code);
+
+        // getSymbol() is string|false at runtime; false (an ICU error) means no symbol.
+        $symbol = (string) $formatter->getSymbol(NumberFormatter::CURRENCY_SYMBOL);
+
+        return $symbol !== '' ? $symbol : null;
     }
 }

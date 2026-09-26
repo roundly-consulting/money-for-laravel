@@ -86,3 +86,23 @@ it('accepts an unregistered currency argument by its own symbol', function (): v
 
     expect((string) Money::parse('12 gems', $gems, 'en'))->toBe('12 GEM');
 });
+
+it('reads back what the formatter writes in the same locale', function (string $locale, string $minor, string $code): void {
+    $money = Money::ofMinor($minor, $code);
+
+    // "1 000,00 Ft", "￥1,234", "1 234 567 JP¥": the locale's own symbol of the expected currency.
+    expect(Money::parse($money->format($locale), $code, $locale)->equals($money))->toBeTrue();
+})->with([
+    'hu HUF' => ['hu', '100000', 'HUF'],
+    'ja_JP JPY' => ['ja_JP', '1234567', 'JPY'],
+    'cs JPY' => ['cs', '1234567', 'JPY'],
+    'pt_BR JPY' => ['pt_BR', '-1234567', 'JPY'],
+    'en_CA USD' => ['en_CA', '123456', 'USD'],
+    'ar_AE BHD' => ['ar_AE', '-1234567', 'BHD'],
+    'sk EUR' => ['sk', '-123456', 'EUR'],
+]);
+
+it('still refuses a locale symbol without the currency it belongs to', function (): void {
+    expect(fn () => Money::parse('1 000,00 Ft', null, 'hu'))->toThrow(InvalidAmount::class, 'unknown currency')
+        ->and(fn () => Money::parse('1 000,00 Ft', 'EUR', 'hu'))->toThrow(InvalidAmount::class, 'unknown currency');
+});
