@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
 use RoundlyConsulting\Money\Currency;
 
@@ -52,6 +53,6 @@ final class ListCurrenciesCommand extends Command
     /** @return list<string> */
     private function codes(): array
     {
-        return array_values(array_filter($this->option('code'), is_string(...)));
+        return array_values(array_filter(Arr::wrap($this->option('code')), is_string(...)));
     }
 }
