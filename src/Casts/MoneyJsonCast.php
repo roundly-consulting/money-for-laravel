@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
+use Illuminate\Contracts\Database\Eloquent\ComparesCastableAttributes;
 use Illuminate\Contracts\Database\Eloquent\SerializesCastableAttributes;
 use Illuminate\Database\Eloquent\Model;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
+use RoundlyConsulting\Money\Exceptions\AmountOverflow;
+use RoundlyConsulting\Money\Exceptions\InvalidAmount;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyValue;
+use RoundlyConsulting\Money\Math\IntegerString;
 use RoundlyConsulting\Money\Money;
 
 /**
@@ -19,7 +23,7 @@ use RoundlyConsulting\Money\Money;
  *
  * @implements CastsAttributes<Money|null, mixed>
  */
-final class MoneyJsonCast implements CastsAttributes, SerializesCastableAttributes
+final class MoneyJsonCast implements CastsAttributes, ComparesCastableAttributes, SerializesCastableAttributes
 {
     public function get(Model $model, string $key, mixed $value, array $attributes): ?Money
     {
@@ -65,10 +69,44 @@ final class MoneyJsonCast implements CastsAttributes, SerializesCastableAttribut
     }
 
     /**
+     * Dirty-check by value: pgsql jsonb and MySQL JSON hand the object back re-formatted
+     * (`{"minor": "1050", "currency": "EUR"}`), so equal money must not compare by bytes —
+     * otherwise merely reading the attribute turns every save into an UPDATE.
+     */
+    public function compare(Model $model, string $key, mixed $firstValue, mixed $secondValue): bool
+    {
+        if ($firstValue === null || $secondValue === null) {
+            return $firstValue === $secondValue;
+        }
+
+        $first = self::identity($firstValue);
+
+        return $first !== null && $first === self::identity($secondValue);
+    }
+
+    /**
      * @return array{minor: string, decimal: string, currency: string}|null
      */
     public function serialize(Model $model, string $key, mixed $value, array $attributes): ?array
     {
         return $value instanceof Money ? $value->toArray() : null;
+    }
+
+    /** "minor|CODE" of a stored value, or null when it is not readable money. */
+    private static function identity(mixed $value): ?string
+    {
+        $data = is_string($value) ? json_decode($value, true) : $value;
+        $minor = is_array($data) ? ($data['minor'] ?? null) : null;
+        $currency = is_array($data) ? ($data['currency'] ?? null) : null;
+
+        if ((! is_int($minor) && ! is_string($minor)) || ! is_string($currency)) {
+            return null;
+        }
+
+        try {
+            return IntegerString::normalize($minor).'|'.strtoupper(trim($currency));
+        } catch (InvalidAmount|AmountOverflow) {
+            return null;
+        }
     }
 }

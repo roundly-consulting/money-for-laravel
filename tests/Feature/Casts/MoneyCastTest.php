@@ -235,3 +235,29 @@ it('builds cast declaration strings', function (): void {
         ->and(AsMoney::configCurrency('shops.currency'))->toBe(AsMoney::class.':config,shops.currency')
         ->and(AsMoney::attributeCurrency('shop_currency'))->toBe(AsMoney::class.':attribute,shop_currency');
 });
+
+it('does not dirty JSON money the engine re-formatted', function (string $stored): void {
+    // pgsql jsonb and MySQL JSON hand back {"minor": "1050", "currency": "EUR"} — spaced,
+    // possibly re-ordered — so a byte comparison saw every read as a change.
+    Product::query()->toBase()->insert(['snapshot' => $stored]);
+    $product = Product::query()->firstOrFail();
+
+    expect((string) $product->snapshot)->toBe('10.50 EUR')
+        ->and($product->isDirty())->toBeFalse();
+
+    $product->snapshot = Money::ofMinor(1050, 'EUR');
+
+    expect($product->isDirty('snapshot'))->toBeFalse()
+        ->and($product->save())->toBeTrue()
+        ->and($product->wasChanged())->toBeFalse();
+
+    $product->snapshot = Money::ofMinor(1051, 'EUR');
+    expect($product->isDirty('snapshot'))->toBeTrue();
+
+    $product->snapshot = Money::ofMinor(1050, 'USD');
+    expect($product->isDirty('snapshot'))->toBeTrue();
+})->with([
+    'jsonb / MySQL spacing' => ['{"minor": "1050", "currency": "EUR"}'],
+    'reordered keys' => ['{"currency":"EUR","minor":"1050"}'],
+    'int minor, full shape' => ['{"minor":1050,"decimal":"10.50","currency":"EUR"}'],
+]);
