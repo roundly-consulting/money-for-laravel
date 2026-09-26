@@ -27,10 +27,10 @@ final class ConvertMoneyCommand extends Command
         $driver = $this->option('driver');
 
         $on = is_string($date) && $date !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $date) ?: null : null;
-        $money = Money::ofMajor((string) $this->argument('amount'), (string) $this->argument('from'));
+        $money = Money::ofMajor(self::text($this->argument('amount')), self::text($this->argument('from')));
 
         $conversion = (new Converter($exchange->provider(is_string($driver) && $driver !== '' ? $driver : null)))
-            ->convertWithRate($money, (string) $this->argument('to'), $on);
+            ->convertWithRate($money, self::text($this->argument('to')), $on);
 
         $this->components->twoColumnDetail('Rate', $conversion->rate->decimal());
         $this->components->twoColumnDetail('Source', $conversion->rate->source);
@@ -38,5 +38,11 @@ final class ConvertMoneyCommand extends Command
         $this->components->twoColumnDetail((string) $conversion->original, (string) $conversion->converted);
 
         return self::SUCCESS;
+    }
+
+    /** Console input as a string, whatever the analyser infers for it. */
+    private static function text(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 }

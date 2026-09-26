@@ -25,8 +25,8 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
 
     public function handle(RefreshExchangeRatesAction $action): int
     {
-        $source = (string) $this->argument('source');
-        $feed = EcbFeed::tryFrom((string) $this->option('feed'));
+        $source = self::text($this->argument('source'));
+        $feed = EcbFeed::tryFrom(self::text($this->option('feed')));
 
         if ($feed === null) {
             $this->components->error('The feed must be one of: '.implode(', ', EcbFeed::values()->all()).'.');
@@ -60,5 +60,11 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
         $value = $this->option($option);
 
         return is_string($value) && $value !== '' ? CarbonImmutable::createFromFormat('!Y-m-d', $value) ?: null : null;
+    }
+
+    /** Console input as a string, whatever the analyser infers for it. */
+    private static function text(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 }

@@ -248,9 +248,16 @@ final readonly class Money implements Arrayable, JsonSerializable, Stringable
     /** `percentage('8.5')` = this × 8.5 / 100, rounded once. */
     public function percentage(Percentage|int|string $percent, RoundingMode $rounding = RoundingMode::HalfAwayFromZero): self
     {
-        $percent = $percent instanceof Percentage ? $percent : Percentage::of($percent);
+        $value = ($percent instanceof Percentage ? $percent : Percentage::of($percent))->value();
 
-        return $this->multiply($percent->toRatio(), $rounding);
+        // minor × P / (100 × 10^scale) — the decimal percent as one fraction, no gcd needed.
+        return $this->with(self::scale(
+            $this->minor,
+            DecimalString::unscaled($value),
+            Calculator::pow10(2 + DecimalString::scale($value)),
+            $rounding,
+            'percentage',
+        ));
     }
 
     /** Round to a multiple of `$minorIncrement` minor units — cash rounding, e.g. CHF 5. */
@@ -601,7 +608,7 @@ final readonly class Money implements Arrayable, JsonSerializable, Stringable
             throw InvalidAllocation::emptyRatios();
         }
 
-        $decimals = array_map(static fn (int|string $ratio): string => DecimalString::normalize($ratio), $ratios);
+        $decimals = array_map(static fn (int|string $ratio): string => is_int($ratio) ? (string) $ratio : DecimalString::normalize($ratio), $ratios);
         $scale = max(array_map(DecimalString::scale(...), $decimals));
 
         $weights = [];
