@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Console\Isolatable;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -88,6 +90,36 @@ it('protects manual rows from source rows, but lets manual overwrite manual', fu
         ->and($manual->stored)->toBe(1)
         ->and(CurrencyRate::query()->pair('EUR', 'USD')->value('rate'))->toBe('1.25')
         ->and(CurrencyRate::query()->pair('EUR', 'USD')->value('source'))->toBe('manual');
+});
+
+it('never overwrites a manual row saved between the protection check and the write', function (): void {
+    $date = CarbonImmutable::parse('2026-09-25');
+    CurrencyRate::factory()->pair('EUR', 'CZK', '25.0')->on('2026-09-25')->from('ecb')->create();
+
+    // Another process saves a manual rate right after the action looked for manual rows.
+    $raced = false;
+
+    DB::listen(function (QueryExecuted $query) use (&$raced): void {
+        if (! $raced && str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'money_exchange_rates')) {
+            $raced = true;
+
+            CurrencyRate::factory()->pair('EUR', 'USD', '1.20')->on('2026-09-25')->from('manual')->create();
+        }
+    });
+
+    app(StoreExchangeRatesAction::class)->execute([
+        ExchangeRate::fromDecimal('EUR', 'USD', '1.1403', $date, 'ecb'),
+        ExchangeRate::fromDecimal('EUR', 'CZK', '24.345', $date, 'ecb'),
+        ExchangeRate::fromDecimal('EUR', 'GBP', '0.8566', $date, 'ecb'),
+    ]);
+
+    $row = fn (string $quote): ?CurrencyRate => CurrencyRate::query()->pair('EUR', $quote)->first();
+
+    expect($raced)->toBeTrue()
+        ->and($row('USD')?->rate)->toBe('1.20')
+        ->and($row('USD')?->source)->toBe('manual')
+        ->and($row('CZK')?->rate)->toBe('24.345')
+        ->and($row('GBP')?->rate)->toBe('0.8566');
 });
 
 it('refuses rates that cannot be stored exactly', function (): void {
