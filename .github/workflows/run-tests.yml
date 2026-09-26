@@ -166,7 +166,8 @@ jobs:
         run: composer update --prefer-stable --prefer-dist --no-interaction
 
       - name: Confirm intl is absent
-        run: php -r 'exit(extension_loaded("intl") ? 1 : 0);'
+        run: |
+          php -r 'exit(extension_loaded("intl") ? 1 : 0);'
 
       - name: Execute tests without intl
         run: vendor/bin/pest --ci
