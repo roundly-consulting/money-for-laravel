@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://roundly-consulting.com/open-source">
+    <img src="art/hero.png" alt="Money For Laravel — Roundly open source" width="100%">
+  </a>
+</p>
+
 # money-for-laravel
 
 Immutable, arbitrary-precision `Money` and `Currency` value objects for Laravel: ISO 4217 and
