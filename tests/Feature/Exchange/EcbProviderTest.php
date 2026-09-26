@@ -163,3 +163,17 @@ it('retries transient failures', function (): void {
 
     Http::assertSentCount(2);
 });
+
+it('reports an unreachable feed as a fetch failure, so a chain falls through', function (): void {
+    Http::fake(['*' => Http::failedConnection('cURL error 28: Operation timed out')]);
+    config([
+        'money.exchange.cache.enabled' => false,
+        'money.exchange.providers.ecb.retries' => 0,
+        'money.exchange.chain' => ['ecb', 'config'],
+        'money.exchange.providers.config.rates' => ['EUR' => ['USD' => '1.1']],
+    ]);
+
+    expect(fn () => ecb()->rate(Currency::of('EUR'), Currency::of('USD')))->toThrow(ExchangeRateFetchFailed::class, 'timed out')
+        ->and(fn () => ecb()->fetch(CarbonImmutable::now(), CarbonImmutable::now()))->toThrow(ExchangeRateFetchFailed::class, 'timed out')
+        ->and((string) app(ExchangeManager::class)->provider('chain')->rate(Currency::of('EUR'), Currency::of('USD'))->rate)->toBe('11/10');
+});

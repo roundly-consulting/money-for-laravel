@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\HttpClientException;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
 use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Contracts\ExchangeRateSource;
@@ -179,11 +180,17 @@ final class EcbExchangeRateProvider implements ExchangeRateProvider, ExchangeRat
     {
         $url = $this->urls[$feed->value] ?? '';
 
-        $response = $this->http
-            ->timeout($this->timeout)
-            ->retry($this->retries + 1, 250, throw: false)
-            ->accept('application/xml')
-            ->get($url);
+        // A timeout or refused connection surfaces as a ConnectionException even with
+        // `throw: false`; as a fetch failure it keeps the contract and lets a chain fall through.
+        try {
+            $response = $this->http
+                ->timeout($this->timeout)
+                ->retry($this->retries + 1, 250, throw: false)
+                ->accept('application/xml')
+                ->get($url);
+        } catch (HttpClientException $exception) {
+            throw ExchangeRateFetchFailed::transport($url, $exception);
+        }
 
         if (! $response->successful()) {
             throw ExchangeRateFetchFailed::http($url, $response->status());
