@@ -102,3 +102,37 @@ it('caches at most 64 formatters per worker', function (): void {
 it('is the formatter auto resolves to when intl is loaded', function (): void {
     expect(app(MoneyFormatter::class))->toBeInstanceOf(IntlMoneyFormatter::class);
 });
+
+it('lays out beyond-float amounts exactly as ICU lays out any other amount', function (string $locale, CurrencyDisplay $display, Currency $currency, string $minor): void {
+    // ICU formats int64 exactly, so for exponent-0 currencies it is an independent oracle
+    // for the digit-exact path: numbering system, currency spacing, affixes, grouping.
+    $oracle = new NumberFormatter($locale, $display === CurrencyDisplay::None ? NumberFormatter::DECIMAL : NumberFormatter::CURRENCY);
+
+    if ($display !== CurrencyDisplay::None) {
+        $oracle->setTextAttribute(NumberFormatter::CURRENCY_CODE, $currency->iso ? $currency->code : 'XXX');
+
+        if ($display === CurrencyDisplay::Code || ! $currency->iso) {
+            $oracle->setSymbol(NumberFormatter::CURRENCY_SYMBOL, $display === CurrencyDisplay::Code ? $currency->code : $currency->displaySymbol());
+        }
+    }
+
+    $oracle->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 0);
+    $oracle->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 0);
+
+    expect((new IntlMoneyFormatter)->format(Money::ofMinor($minor, $currency), $locale, new FormatOptions(display: $display)))
+        ->toBe($oracle->format((int) $minor, NumberFormatter::TYPE_INT64));
+})->with(['en_US', 'sk', 'de_CH', 'hi_IN', 'ar_EG', 'fa_IR', 'mr', 'bn', 'ja_JP', 'fr_FR'])
+    ->with([CurrencyDisplay::Symbol, CurrencyDisplay::Code, CurrencyDisplay::None])
+    ->with([
+        'JPY' => fn (): Currency => Currency::of('JPY'),
+        'points' => fn (): Currency => Currency::custom('PTS', 0, 'Points', 'pts'),
+    ])
+    ->with(['1234567890123456789', '-987654321098765432']);
+
+it('spaces an alphabetic code from beyond-float digits like ICU does', function (): void {
+    $formatter = new IntlMoneyFormatter;
+
+    expect(ws($formatter->format(Money::ofMinor('1234567890123456789', 'USD'), 'en_US', FormatOptions::code())))->toBe('USD 12,345,678,901,234,567.89')
+        ->and(ws($formatter->format(Money::ofMajor('1.5', Currency::custom('ETH', 18)), 'en_US')))->toBe('ETH 1.500000000000000000')
+        ->and(ws($formatter->format(Money::ofMajor('-0.000000000000000001', Currency::custom('ETH', 18)), 'en_US')))->toBe('-ETH 0.000000000000000001');
+});

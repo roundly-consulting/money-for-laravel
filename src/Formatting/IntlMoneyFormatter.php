@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Money\Formatting;
 use NumberFormatter;
 use RoundlyConsulting\Money\Contracts\MoneyFormatter;
 use RoundlyConsulting\Money\Enums\CurrencyDisplay;
+use RoundlyConsulting\Money\Exceptions\FormatterUnavailable;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Math\IntegerString;
 use RoundlyConsulting\Money\Money;
@@ -52,7 +53,7 @@ final class IntlMoneyFormatter implements MoneyFormatter
             }
         }
 
-        return $this->exact($formatter, $decimal, $options);
+        return $this->exact($formatter, $decimal);
     }
 
     /** How many formatters this worker currently holds (bounded by CACHE_SIZE). */
@@ -101,34 +102,57 @@ final class IntlMoneyFormatter implements MoneyFormatter
     }
 
     /**
-     * Render exact decimal digits with the locale's symbols and affixes.
+     * Render the exact decimal digits through ICU's own layout: ICU formats a template with
+     * the same sign and digit layout (10^(n-1), or 10^-k for a zero integer part), which
+     * places the affixes, currency spacing, grouping and bidi marks and picks the numbering
+     * system; the exact digits then replace the template's digits one by one.
      */
-    private function exact(NumberFormatter $formatter, string $decimal, FormatOptions $options): string
+    private function exact(NumberFormatter $formatter, string $decimal): string
     {
-        $monetary = $options->display !== CurrencyDisplay::None;
-
-        $decimalSeparator = $formatter->getSymbol($monetary ? NumberFormatter::MONETARY_SEPARATOR_SYMBOL : NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
-        $groupingSeparator = $formatter->getSymbol($monetary ? NumberFormatter::MONETARY_GROUPING_SEPARATOR_SYMBOL : NumberFormatter::GROUPING_SEPARATOR_SYMBOL);
-
         $negative = str_starts_with($decimal, '-');
-        [$integer, $fraction] = array_pad(explode('.', ltrim($decimal, '-'), 2), 2, null);
+        [$integer, $fraction] = array_pad(explode('.', ltrim($decimal, '-'), 2), 2, '');
 
-        $number = $options->grouping
-            ? AmountDigits::group(
-                $integer,
-                (string) $groupingSeparator,
-                (int) $formatter->getAttribute(NumberFormatter::GROUPING_SIZE),
-                (int) $formatter->getAttribute(NumberFormatter::SECONDARY_GROUPING_SIZE),
-            )
-            : $integer;
+        $template = $integer === '0'
+            ? 10 ** -strlen($fraction)
+            : (float) ('1'.str_repeat('0', strlen($integer) - 1));
 
-        if ($fraction !== null) {
-            $number .= $decimalSeparator.$fraction;
+        $rendered = $formatter->format($negative ? -$template : $template);
+
+        if (! is_string($rendered)) {
+            throw FormatterUnavailable::exact($decimal);
         }
 
-        $prefix = $formatter->getTextAttribute($negative ? NumberFormatter::NEGATIVE_PREFIX : NumberFormatter::POSITIVE_PREFIX);
-        $suffix = $formatter->getTextAttribute($negative ? NumberFormatter::NEGATIVE_SUFFIX : NumberFormatter::POSITIVE_SUFFIX);
+        // Only the number between the affixes: a currency symbol may itself hold digits.
+        $prefix = (string) $formatter->getTextAttribute($negative ? NumberFormatter::NEGATIVE_PREFIX : NumberFormatter::POSITIVE_PREFIX);
+        $suffix = (string) $formatter->getTextAttribute($negative ? NumberFormatter::NEGATIVE_SUFFIX : NumberFormatter::POSITIVE_SUFFIX);
 
-        return $prefix.$number.$suffix;
+        if (! str_starts_with($rendered, $prefix) || ! str_ends_with($rendered, $suffix) || strlen($prefix) + strlen($suffix) > strlen($rendered)) {
+            [$prefix, $suffix] = ['', ''];
+        }
+
+        $number = substr($rendered, strlen($prefix), strlen($rendered) - strlen($prefix) - strlen($suffix));
+
+        // ICU's digit symbols 0..9 (UNUM_ZERO_DIGIT_SYMBOL, then UNUM_ONE..NINE_DIGIT_SYMBOL = 18..26).
+        $symbols = [];
+
+        for ($digit = 0; $digit <= 9; $digit++) {
+            $symbols[] = (string) $formatter->getSymbol($digit === 0 ? NumberFormatter::ZERO_DIGIT_SYMBOL : 17 + $digit);
+        }
+
+        $digits = str_split($integer.$fraction);
+        $characters = mb_str_split($number);
+        $next = 0;
+
+        foreach ($characters as $index => $character) {
+            if (in_array($character, $symbols, true) && isset($digits[$next])) {
+                $characters[$index] = $symbols[(int) $digits[$next++]];
+            }
+        }
+
+        if ($next !== count($digits)) {
+            throw FormatterUnavailable::exact($decimal);
+        }
+
+        return $prefix.implode('', $characters).$suffix;
     }
 }

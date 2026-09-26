@@ -10,4 +10,9 @@ final class FormatterUnavailable extends MoneyException
     {
         return new self('The "intl" formatting driver needs ext-intl, which is not loaded; install it or set the driver to "auto" or "decimal".');
     }
+
+    public static function exact(string $decimal): self
+    {
+        return new self("ICU could not lay out [{$decimal}] digit-exactly for this locale.");
+    }
 }
