@@ -51,4 +51,57 @@ return [
         'currency_length' => (int) env('MONEY_CURRENCY_LENGTH', 3),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rounding
+    |--------------------------------------------------------------------------
+    |
+    | The service-level default rounding mode (formatter digit reduction,
+    | avgMoney). Value objects never read config: their lossy methods default
+    | to half_away_from_zero as a constant. One of: half_away_from_zero,
+    | half_towards_zero, half_even, half_odd, towards_zero, away_from_zero,
+    | positive_infinity, negative_infinity.
+    |
+    */
+
+    'rounding' => env('MONEY_ROUNDING', 'half_away_from_zero'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Formatting
+    |--------------------------------------------------------------------------
+    |
+    | `driver`: auto (intl when ext-intl is loaded, else the deterministic
+    | decimal formatter) | intl | decimal. `locale`: null follows the app
+    | locale. `display`: symbol | code | none. `fallback` configures the
+    | deterministic formatter (placeholders {sign} {amount} {code} {symbol});
+    | its decimal separator is also the parser's separator without intl.
+    |
+    */
+
+    'formatting' => [
+        'driver' => env('MONEY_FORMATTER', 'auto'),
+        'locale' => env('MONEY_LOCALE'),
+        'display' => 'symbol',
+        'fallback' => [
+            'pattern' => '{sign}{amount} {code}',
+            'decimal_separator' => '.',
+            'thousands_separator' => ',',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Macros
+    |--------------------------------------------------------------------------
+    |
+    | Each DX surface can be switched off. An existing host macro with the same
+    | name always wins (registration is hasMacro-guarded).
+    |
+    */
+
+    'macros' => [
+        'blade' => true,
+    ],
+
 ];

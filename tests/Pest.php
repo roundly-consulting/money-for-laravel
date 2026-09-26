@@ -24,3 +24,11 @@ function randomInteger(int $maxDigits, bool $allowNegative = true): string
 
     return $allowNegative && mt_rand(0, 1) === 1 ? '-'.$digits : $digits;
 }
+
+/**
+ * ICU versions swap NBSP / NNBSP / thin spaces and add bidi marks; compare normalised.
+ */
+function ws(string $formatted): string
+{
+    return strtr($formatted, ["\u{00A0}" => ' ', "\u{202F}" => ' ', "\u{2009}" => ' ', "\u{200E}" => '', "\u{200F}" => '', "\u{061C}" => '']);
+}

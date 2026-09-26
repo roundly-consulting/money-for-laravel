@@ -7,7 +7,8 @@ namespace RoundlyConsulting\Money;
 use Illuminate\Contracts\Support\Arrayable;
 use JsonSerializable;
 use RoundingMode;
-use RoundlyConsulting\Money\Exceptions\AmountOverflow;
+use RoundlyConsulting\Money\Contracts\MoneyFormatter;
+use RoundlyConsulting\Money\Contracts\MoneyParser;
 use RoundlyConsulting\Money\Exceptions\CurrencyMismatch;
 use RoundlyConsulting\Money\Exceptions\DivisionByZero;
 use RoundlyConsulting\Money\Exceptions\EmptyMoneyCollection;
@@ -15,6 +16,7 @@ use RoundlyConsulting\Money\Exceptions\InvalidAllocation;
 use RoundlyConsulting\Money\Exceptions\InvalidAmount;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyValue;
 use RoundlyConsulting\Money\Exceptions\RoundingNecessary;
+use RoundlyConsulting\Money\Formatting\FormatOptions;
 use RoundlyConsulting\Money\Math\Calculator;
 use RoundlyConsulting\Money\Math\DecimalString;
 use RoundlyConsulting\Money\Math\IntegerString;
@@ -100,6 +102,12 @@ final readonly class Money implements Arrayable, JsonSerializable, Stringable
     public static function zero(Currency|string $currency): self
     {
         return new self('0', self::currencyFrom($currency));
+    }
+
+    /** Parse localized input ("1 234,50 €") through the bound MoneyParser. */
+    public static function parse(string $input, Currency|string|null $currency = null, ?string $locale = null): self
+    {
+        return app(MoneyParser::class)->parse($input, $currency, $locale);
     }
 
     /**
@@ -476,6 +484,14 @@ final readonly class Money implements Arrayable, JsonSerializable, Stringable
         }
 
         return $total->divide($count, $rounding);
+    }
+
+    // ── container conveniences (the only methods that resolve services) ────
+
+    /** Locale-aware output through the bound MoneyFormatter (intl, or the decimal fallback). */
+    public function format(?string $locale = null, ?FormatOptions $options = null): string
+    {
+        return app(MoneyFormatter::class)->format($this, $locale, $options);
     }
 
     // ── serialization ───────────────────────────────────────────────────────

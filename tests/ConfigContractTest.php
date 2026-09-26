@@ -13,6 +13,9 @@ it('ships exactly the config keys it reads', function (): void {
     expect(__DIR__.'/../config/money.php')->toSatisfyConfigContract(__DIR__.'/../src', [
         'extraReadPrefixes' => [
             'money.schema.currency_length',
+            'money.rounding',
+            'money.formatting.driver',
+            'money.formatting.display',
         ],
     ]);
 });

@@ -27,4 +27,9 @@ final class InvalidMoneyConfiguration extends MoneyException
     {
         return new self("[{$key}] is misconfigured: {$reason}.");
     }
+
+    public static function locale(string $locale): self
+    {
+        return new self("[{$locale}] is not a valid locale identifier (e.g. en, sk, de_CH, en-US).");
+    }
 }
