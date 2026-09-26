@@ -36,7 +36,7 @@ it('parses localized input', function (string $input, ?string $currency, string 
     'parentheses' => ['(1,234.50)', 'EUR', 'en', '-1234.50 EUR'],
     'parentheses and symbol' => ['(€1,234.50)', null, 'en', '-1234.50 EUR'],
     'indian grouping' => ['12,34,567.50', 'INR', 'hi_IN', '1234567.50 INR'],
-    'bidi marks' => ["\u{200F}\u{200E}-1,234.50\u{00A0}€", null, 'ar', '-1234.50 EUR'],
+    'bidi marks' => ["\u{200F}\u{200E}-1.234,50\u{00A0}€", null, 'ar_MA', '-1234.50 EUR'],
     'default currency' => ['10', null, 'en', '10.00 EUR'],
     'symbol matching the argument' => ['$10', 'USD', 'en', '10.00 USD'],
     'JPY' => ['¥1,234', null, 'en', '1234 JPY'],

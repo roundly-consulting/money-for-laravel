@@ -23,7 +23,7 @@ it('formats per locale', function (string $locale, string $expected): void {
     ['sk', '-1 234 567,50 €'],
     ['de_CH', 'EUR-1’234’567.50'],
     ['ja_JP', '-€1,234,567.50'],
-    ['ar', '-1,234,567.50 €'],
+    ['ar_MA', '-1.234.567,50 €'],
     ['hi_IN', '-€12,34,567.50'],
 ]);
 
