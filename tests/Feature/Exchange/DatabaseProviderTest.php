@@ -32,6 +32,14 @@ it('takes the newest rate on or before the date', function (): void {
         ->and((string) $this->provider->rate($eur, $usd, CarbonImmutable::parse('2026-09-27'))->rate)->toBe('6/5');
 });
 
+it('dates rates in the exchange timezone, like the ecb driver', function (): void {
+    $rate = $this->provider->rate(Currency::of('EUR'), Currency::of('USD'));
+
+    expect($rate->date->timezoneName)->toBe('Europe/Berlin')
+        ->and($rate->date->equalTo(CarbonImmutable::parse('2026-09-25', 'Europe/Berlin')))->toBeTrue()
+        ->and($this->provider->rate(Currency::of('USD'), Currency::of('CZK'))->date->timezoneName)->toBe('Europe/Berlin');
+});
+
 it('turns the requested instant into a date in the exchange timezone', function (): void {
     // 23:30 UTC on the 24th is already the 25th in Berlin.
     expect((string) $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'))->rate)->toBe('6/5');

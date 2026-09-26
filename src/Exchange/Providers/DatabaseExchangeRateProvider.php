@@ -67,6 +67,15 @@ final class DatabaseExchangeRateProvider implements ExchangeRateProvider
         $direct = $this->row($from, $to, $date);
         $rate = $direct?->toExchangeRate() ?? $this->row($to, $from, $date)?->toExchangeRate()->invert();
 
+        // A row is a calendar date; date it in the exchange timezone, like the ecb driver.
+        $rate = $rate === null ? null : new ExchangeRate(
+            $rate->from,
+            $rate->to,
+            $rate->rate,
+            CarbonImmutable::parse($rate->date->toDateString(), $this->timezone),
+            $rate->source,
+        );
+
         // Calendar dates, not instants: a row's date is midnight in the app timezone while
         // `$date` is midnight in the exchange timezone, which shifted the cut-off by a day.
         if ($rate !== null && $rate->date->toDateString() < $date->subDays($this->maxAgeDays)->toDateString()) {

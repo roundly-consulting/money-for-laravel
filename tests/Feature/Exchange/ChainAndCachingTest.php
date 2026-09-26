@@ -86,7 +86,7 @@ it('caches successful lookups as scalar arrays, never failures', function (): vo
         ->and((string) $second->rate)->toBe((string) $first->rate)
         ->and($second->date->toDateString())->toBe('2026-09-25')
         ->and($second->source)->toBe('ecb')
-        ->and(Cache::store('array')->get('money:exchange:ecb:EUR:USD:latest'))->toBe(['num' => '5427', 'den' => '5000', 'date' => '2026-09-25', 'source' => 'ecb'])
+        ->and(Cache::store('array')->get('money:exchange:ecb:EUR:USD:latest'))->toBe(['num' => '5427', 'den' => '5000', 'date' => '2026-09-25', 'tz' => 'UTC', 'source' => 'ecb'])
         ->and($cached->inner())->toBe($inner);
 
     $cached->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'));
@@ -97,10 +97,36 @@ it('caches successful lookups as scalar arrays, never failures', function (): vo
         ->and($inner->calls)->toBe(4);
 });
 
-it('ignores a malformed cache entry', function (): void {
-    Cache::store('array')->put('money:exchange:config:EUR:USD:latest', ['num' => 5], 60);
+it('returns a cached rate dated exactly like the fresh one', function (): void {
+    $inner = new class implements ExchangeRateProvider
+    {
+        public function rate(Currency $from, Currency $to, ?CarbonInterface $on = null): ExchangeRate
+        {
+            return ExchangeRate::fromDecimal($from, $to, '1.0854', CarbonImmutable::parse('2026-09-25', 'Europe/Berlin'), 'ecb');
+        }
+    };
 
+    $cached = new CachingExchangeRateProvider($inner, 'ecb', Cache::store('array'), 60, 'money:exchange', 'Europe/Berlin');
+
+    $fresh = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
+    $hit = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
+
+    expect($hit->date->equalTo($fresh->date))->toBeTrue()
+        ->and($hit->date->timezoneName)->toBe('Europe/Berlin')
+        ->and($hit->date->toDateTimeString())->toBe('2026-09-25 00:00:00');
+});
+
+it('ignores a malformed cache entry', function (): void {
     $cached = new CachingExchangeRateProvider(new ArrayExchangeRateProvider(['EUR/USD' => '2']), 'config', Cache::store('array'), 60, 'money:exchange', 'UTC');
 
-    expect((string) $cached->rate(Currency::of('EUR'), Currency::of('USD'))->rate)->toBe('2/1');
+    foreach ([
+        ['num' => 5],
+        ['num' => '5', 'den' => '1', 'date' => '2026-09-25', 'source' => 'x'],
+        ['num' => '5', 'den' => '1', 'date' => '2026-09-25', 'tz' => 'Mars/Olympus', 'source' => 'x'],
+        ['num' => '5', 'den' => '1', 'date' => 'yesterday', 'tz' => 'UTC', 'source' => 'x'],
+    ] as $entry) {
+        Cache::store('array')->put('money:exchange:config:EUR:USD:latest', $entry, 60);
+
+        expect((string) $cached->rate(Currency::of('EUR'), Currency::of('USD'))->rate)->toBe('2/1');
+    }
 });
