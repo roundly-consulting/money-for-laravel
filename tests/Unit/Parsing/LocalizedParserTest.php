@@ -98,7 +98,7 @@ it('reads back what the formatter writes in the same locale', function (string $
     'cs JPY' => ['cs', '1234567', 'JPY'],
     'pt_BR JPY' => ['pt_BR', '-1234567', 'JPY'],
     'en_CA USD' => ['en_CA', '123456', 'USD'],
-    'ar_AE BHD' => ['ar_AE', '-1234567', 'BHD'],
+    'ar_MA BHD' => ['ar_MA', '-1234567', 'BHD'],
     'sk EUR' => ['sk', '-123456', 'EUR'],
 ]);
 
