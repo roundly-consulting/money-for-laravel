@@ -44,9 +44,4 @@ final class InvalidMoneyValue extends MoneyException
     {
         return new self("[{$key}] does not fit a 64-bit integer, which is the exact range of a money column on {$driver}; larger amounts need pgsql or MySQL.");
     }
-
-    public static function wrongCurrency(string $key, string $expected, string $given): self
-    {
-        return new self("[{$key}] is stored in {$expected}, {$given} given.");
-    }
 }
