@@ -1,11 +1,21 @@
 {
-    "name": "roundly-consulting/package-template-for-laravel",
-    "description": "TODO: replace with a one-line description of the new package.",
+    "name": "roundly-consulting/money-for-laravel",
+    "description": "Immutable arbitrary-precision Money and Currency value objects for Laravel: ISO 4217 + custom currencies, exact decimal parsing, rounding-safe arithmetic and allocation, locale formatting, Eloquent casts and schema macros, validation, discounts, tax, and pluggable exchange rates (array, database, ECB).",
     "keywords": [
         "roundly-consulting",
-        "laravel"
+        "laravel",
+        "money",
+        "currency",
+        "iso-4217",
+        "minor-units",
+        "bcmath",
+        "arbitrary-precision",
+        "exchange-rates",
+        "ecb",
+        "discounts",
+        "tax"
     ],
-    "homepage": "https://github.com/roundly-consulting/package-template-for-laravel",
+    "homepage": "https://github.com/roundly-consulting/money-for-laravel",
     "license": "MIT",
     "authors": [
         {
@@ -29,6 +39,18 @@
         },
         {
             "type": "path",
+            "url": "../enums-for-laravel*",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/roundly-consulting/enums-for-laravel",
+            "no-api": true
+        },
+        {
+            "type": "path",
             "url": "../testing-for-laravel*",
             "options": {
                 "symlink": true
@@ -42,7 +64,18 @@
     ],
     "require": {
         "php": "^8.4",
+        "ext-bcmath": "*",
+        "illuminate/bus": "^12.0|^13.0",
+        "illuminate/cache": "^12.0|^13.0",
+        "illuminate/console": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/database": "^12.0|^13.0",
+        "illuminate/http": "^12.0|^13.0",
+        "illuminate/queue": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
+        "illuminate/validation": "^12.0|^13.0",
+        "illuminate/view": "^12.0|^13.0",
+        "roundly-consulting/enums-for-laravel": "@dev",
         "roundly-consulting/package-toolkit-for-laravel": "@dev"
     },
     "require-dev": {
@@ -54,16 +87,23 @@
         "pestphp/pest-plugin-arch": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
         "roundly-consulting/testing-for-laravel": "@dev"
+    },
+    "suggest": {
+        "ext-intl": "Locale-aware money formatting and localized input parsing (falls back to a deterministic formatter without it).",
+        "ext-simplexml": "Required by the ECB exchange-rate provider (enabled by default in standard PHP builds)."
     },
     "autoload": {
         "psr-4": {
-            "RoundlyConsulting\\PackageTemplate\\": "src"
+            "RoundlyConsulting\\Money\\": "src",
+            "RoundlyConsulting\\Money\\Database\\Factories\\": "database/factories"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "RoundlyConsulting\\PackageTemplate\\Tests\\": "tests"
+            "RoundlyConsulting\\Money\\Tests\\": "tests"
         }
     },
     "scripts": {
@@ -71,7 +111,7 @@
         "format": "vendor/bin/pint",
         "analyse": "vendor/bin/phpstan analyse --no-progress",
         "test": "vendor/bin/pest",
-        "test-coverage": "vendor/bin/pest --coverage --min=90"
+        "test-coverage": "vendor/bin/pest --coverage --min=95"
     },
     "config": {
         "sort-packages": true,
@@ -83,7 +123,12 @@
     "extra": {
         "laravel": {
             "providers": [
-                "RoundlyConsulting\\PackageTemplate\\PackageTemplateServiceProvider"
+                "RoundlyConsulting\\Money\\MoneyServiceProvider"
+            ]
+        },
+        "phpstan": {
+            "includes": [
+                "extension.neon"
             ]
         }
     },

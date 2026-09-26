@@ -19,5 +19,5 @@ declare(strict_types=1);
  * that renders keys instead of reading them.
  */
 it('ships exactly the config keys it reads', function (): void {
-    expect(__DIR__.'/../config/package-template.php')->toSatisfyConfigContract(__DIR__.'/../src');
+    expect(__DIR__.'/../config/money.php')->toSatisfyConfigContract(__DIR__.'/../src');
 });

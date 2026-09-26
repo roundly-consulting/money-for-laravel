@@ -1,7 +1,11 @@
+includes:
+    - extension.neon
+
 parameters:
     level: 7
     paths:
         - src
+        - database
         - config
     # This package ships its own config/ dir; env() is correct there.
     configDirectories:
