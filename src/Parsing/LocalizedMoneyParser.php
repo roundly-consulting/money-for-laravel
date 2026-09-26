@@ -25,6 +25,9 @@ use RoundlyConsulting\Money\Money;
  * 3. A leading/trailing `-`/`+` or accounting parentheses set the sign.
  * 4. Grouping is accepted only in the integer part and only in well-formed groups.
  * 5. The canonical decimal goes to Money::ofMajor(): excess precision is refused.
+ *
+ * Digits must be ASCII (0-9): native numbering systems (Arabic-Indic, Devanagari, …) are
+ * refused, although the formatter renders them for locales that use them.
  */
 final class LocalizedMoneyParser implements MoneyParser
 {

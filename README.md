@@ -173,6 +173,8 @@ Money::parse('(1,234.50)', 'USD', 'en');              // -1234.50 USD
 ```
 
 Amounts beyond 15 significant digits are formatted digit-exact (ICU only formats doubles).
+The parser reads **ASCII digits only** (`0-9`): input in a native numbering system (Arabic-Indic,
+Devanagari, …) is refused, even though `format()` renders those digits for such locales.
 Blade: `@money($price)` or `@money($price, 'sk')`; `null` renders an empty string.
 
 ### Eloquent

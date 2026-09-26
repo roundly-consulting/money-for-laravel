@@ -62,6 +62,7 @@ it('refuses what it cannot parse unambiguously', function (string $input, ?strin
     'minus and parentheses' => ['(-10)', 'EUR', 'en', InvalidAmount::class],
     'too long' => [str_repeat('1', 129), 'EUR', 'en', InvalidAmount::class],
     'bad locale' => ['10', 'EUR', 'x', InvalidMoneyConfiguration::class],
+    'native digits (ASCII only, by design)' => ['١٬٢٣٤', 'EUR', 'ar_EG', InvalidAmount::class],
 ]);
 
 it('resolves registered custom symbols and codes', function (): void {
