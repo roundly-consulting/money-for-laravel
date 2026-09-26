@@ -122,6 +122,27 @@ it('never overwrites a manual row saved between the protection check and the wri
         ->and($row('GBP')?->rate)->toBe('0.8566');
 });
 
+it('reports the latest date of the rows it actually wrote', function (): void {
+    $store = app(StoreExchangeRatesAction::class);
+
+    $store->execute([ExchangeRate::fromDecimal('EUR', 'USD', '1.20', CarbonImmutable::parse('2026-09-25'), 'manual')]);
+
+    $result = $store->execute([
+        ExchangeRate::fromDecimal('EUR', 'USD', '1.1403', CarbonImmutable::parse('2026-09-25'), 'ecb'),
+        ExchangeRate::fromDecimal('EUR', 'USD', '1.1301', CarbonImmutable::parse('2026-09-24'), 'ecb'),
+    ]);
+
+    expect($result->skippedManual)->toBe(1)
+        ->and($result->stored)->toBe(1)
+        ->and($result->latestDate?->toDateString())->toBe('2026-09-24');
+
+    $none = $store->execute([ExchangeRate::fromDecimal('EUR', 'USD', '1.1403', CarbonImmutable::parse('2026-09-25'), 'ecb')]);
+
+    expect($none->stored)->toBe(0)
+        ->and($none->skippedManual)->toBe(1)
+        ->and($none->latestDate)->toBeNull();
+});
+
 it('refuses rates that cannot be stored exactly', function (): void {
     app(StoreExchangeRatesAction::class)->execute([
         new ExchangeRate(Currency::of('EUR'), Currency::of('USD'), Ratio::of(1, 3), CarbonImmutable::now(), 'manual'),

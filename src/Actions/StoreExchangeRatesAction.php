@@ -37,8 +37,8 @@ final class StoreExchangeRatesAction
     public function execute(iterable $rates): RefreshResult
     {
         $rows = [];
+        $dates = [];
         $source = null;
-        $latest = null;
 
         foreach ($rates as $rate) {
             $decimal = $rate->rate->toExactDecimal(38);
@@ -57,18 +57,24 @@ final class StoreExchangeRatesAction
                 'effective_date' => $date,
                 'source' => $rate->source,
             ];
+            $dates[$key] = $rate->date;
 
             $source ??= $rate->source;
-            $latest = $latest === null || $rate->date->greaterThan($latest) ? $rate->date : $latest;
         }
 
         $skippedManual = 0;
 
         foreach ($this->protectedKeys($rows) as $key) {
             if ($rows[$key]['source'] !== 'manual') {
-                unset($rows[$key]);
+                unset($rows[$key], $dates[$key]);
                 $skippedManual++;
             }
+        }
+
+        $latest = null;
+
+        foreach ($dates as $date) {
+            $latest = $latest === null || $date->greaterThan($latest) ? $date : $latest;
         }
 
         $now = CarbonImmutable::now()->toDateTimeString();
