@@ -261,3 +261,16 @@ it('does not dirty JSON money the engine re-formatted', function (string $stored
     'reordered keys' => ['{"currency":"EUR","minor":"1050"}'],
     'int minor, full shape' => ['{"minor":1050,"decimal":"10.50","currency":"EUR"}'],
 ]);
+
+it('treats unreadable or null JSON originals as changed', function (?string $original): void {
+    $product = (new Product)->setRawAttributes(['snapshot' => $original], sync: true);
+    $product->snapshot = Money::ofMinor(1050, 'EUR');
+
+    expect($product->isDirty('snapshot'))->toBeTrue();
+})->with([
+    'null' => [null],
+    'not json' => ['nope'],
+    'minor too long' => ['{"minor":"'.str_repeat('9', 70).'","currency":"EUR"}'],
+    'minor a fraction' => ['{"minor":"10.5","currency":"EUR"}'],
+    'no currency' => ['{"minor":"1050"}'],
+]);
