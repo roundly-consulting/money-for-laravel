@@ -35,11 +35,6 @@ final class InvalidMoneyValue extends MoneyException
         return new self("[{$key}] cannot store an amount in [{$code}]: only the code is persisted, so the currency must be registered with the same exponent.");
     }
 
-    public static function currencyColumnConflict(string $key, string $column, string $stored, string $given): self
-    {
-        return new self("[{$key}] is {$given} but its shared currency column [{$column}] holds {$stored}; set [{$column}] first to re-denominate the row on purpose.");
-    }
-
     public static function exceedsPrecision(string $key, int $digits, int $precision): self
     {
         return new self("[{$key}] has {$digits} digits of minor units; the column holds at most {$precision} (money.schema.precision).");

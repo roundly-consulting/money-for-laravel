@@ -34,6 +34,10 @@ return [
     'currencies' => [
         'iso' => (bool) env('MONEY_ISO_CURRENCIES', true),
         'custom' => [],
+
+        // Default allow-list for the CurrencyCode / money_amount input rules (null = the
+        // whole registry). It never restricts reading stored data.
+        'allowed' => null,
     ],
 
     /*
@@ -42,13 +46,16 @@ return [
     |--------------------------------------------------------------------------
     |
     | Read when migrations run, then fixed: `currency_length` is the varchar
-    | length of currency columns (and the longest custom code the registry
-    | accepts).
+    | length of currency columns (3..10, and the longest custom code the
+    | registry accepts); `precision` is P of the decimal(P, 0) amount columns
+    | $table->money() creates (19..65) — the cast and the MoneyAmount rule
+    | enforce the same limit.
     |
     */
 
     'schema' => [
         'currency_length' => (int) env('MONEY_CURRENCY_LENGTH', 3),
+        'precision' => (int) env('MONEY_PRECISION', 38),
     ],
 
     /*
@@ -101,7 +108,10 @@ return [
     */
 
     'macros' => [
+        'collection' => true,
+        'request' => true,
         'blade' => true,
+        'validation' => true,
     ],
 
 ];

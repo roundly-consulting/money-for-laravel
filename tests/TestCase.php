@@ -15,4 +15,10 @@ abstract class TestCase extends PackageTestCase
     {
         return [MoneyServiceProvider::class];
     }
+
+    /** @return list<string> */
+    protected function migrationSources(): array
+    {
+        return [__DIR__.'/Fixtures/migrations'];
+    }
 }

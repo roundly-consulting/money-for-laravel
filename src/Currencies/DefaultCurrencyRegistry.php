@@ -10,6 +10,7 @@ use RoundlyConsulting\Money\Exceptions\CurrencyAlreadyRegistered;
 use RoundlyConsulting\Money\Exceptions\InvalidCurrency;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Exceptions\UnknownCurrency;
+use RoundlyConsulting\Money\Support\Schema;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
@@ -38,7 +39,7 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
     {
         $registry = new self(
             config('money.currencies.iso') === false ? [] : IsoCurrencyData::load(),
-            Config::using(InvalidMoneyConfiguration::class)->intBetween('money.schema.currency_length', 3, 10, 3),
+            Schema::currencyLength(),
         );
 
         $custom = config('money.currencies.custom');

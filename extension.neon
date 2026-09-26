@@ -1,1 +1,5 @@
-services: []
+services:
+    -
+        class: RoundlyConsulting\Money\PHPStan\MoneyMacrosExtension
+        tags:
+            - phpstan.broker.methodsClassReflectionExtension

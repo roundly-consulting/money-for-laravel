@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Validation\Factory as ValidationFactory;
 use RoundlyConsulting\Money\Commands\ListCurrenciesCommand;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
 use RoundlyConsulting\Money\Contracts\MoneyFormatter;
@@ -17,6 +18,8 @@ use RoundlyConsulting\Money\Formatting\DecimalMoneyFormatter;
 use RoundlyConsulting\Money\Formatting\IntlMoneyFormatter;
 use RoundlyConsulting\Money\Parsing\LocalizedMoneyParser;
 use RoundlyConsulting\Money\Support\BladeMoney;
+use RoundlyConsulting\Money\Support\MoneyBlueprint;
+use RoundlyConsulting\Money\Support\MoneyMacros;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
 use RoundlyConsulting\PackageToolkit\Package;
 use RoundlyConsulting\PackageToolkit\PackageServiceProvider;
@@ -31,6 +34,7 @@ final class MoneyServiceProvider extends PackageServiceProvider
         $package
             ->name('money')
             ->hasConfigFile()
+            ->hasTranslations()
             ->hasCommands([
                 ListCurrenciesCommand::class,
             ])
@@ -54,6 +58,23 @@ final class MoneyServiceProvider extends PackageServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        // Always: published consumer migrations call these macros.
+        MoneyBlueprint::register();
+
+        if (config('money.macros.collection') !== false) {
+            MoneyMacros::registerCollectionMacros();
+        }
+
+        if (config('money.macros.request') !== false) {
+            MoneyMacros::registerRequestMacro();
+        }
+
+        if (config('money.macros.validation') !== false) {
+            $this->callAfterResolving(ValidationFactory::class, static function (ValidationFactory $factory): void {
+                MoneyMacros::registerValidationRules($factory);
+            });
+        }
 
         if (config('money.macros.blade') !== false) {
             $this->registerBladeDirective('money', BladeMoney::compile(...));

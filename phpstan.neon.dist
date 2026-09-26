@@ -7,6 +7,7 @@ parameters:
         - src
         - database
         - config
+        - tests/Fixtures/phpstan
     # This package ships its own config/ dir; env() is correct there.
     configDirectories:
         - config
