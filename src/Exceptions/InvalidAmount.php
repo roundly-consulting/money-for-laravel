@@ -50,4 +50,9 @@ final class InvalidAmount extends MoneyException
     {
         return new self("The money payload is missing the [{$key}] key.");
     }
+
+    public static function increment(string $increment): self
+    {
+        return new self("A rounding increment must be a positive integer number of minor units, [{$increment}] given.");
+    }
 }
