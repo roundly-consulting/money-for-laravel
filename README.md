@@ -232,7 +232,7 @@ $request->validate([
     'price'    => ['required', MoneyAmount::in('EUR')->positive()->max('99999.99')],
     'fee'      => [MoneyAmount::inCurrencyFrom('currency')->allowNegative()],
     'currency' => ['required', (new CurrencyCode)->isoOnly()],
-    'legacy'   => 'money_amount:EUR',
+    'deposit'  => 'money_amount:EUR',
 ]);
 
 $price = $request->money('price', 'EUR');   // JSON 1.1 → 1.10 €, not 1.11 €
@@ -338,22 +338,22 @@ $fake->assertRateRequested('EUR', 'USD');
 
 ### Migrating from a private Money class
 
-| Legacy call | money-for-laravel |
+| Your call | money-for-laravel |
 |---|---|
-| shops `Money::of($minor, 'EUR')`, `Money::EUR($minor)` | `Money::ofMinor($minor, 'EUR')` |
-| shops `getMinorAmount()` / coupons + advertisements `getAmount()` / purchases `->amount` (`int`) | `minor()` (a **string**) — or `minorInt()` where an `int` is genuinely required |
-| shops `getAmount()` (string of minor units) | `minor()` — **not** `toDecimal()` |
+| `Money::of($minor, 'EUR')`, `Money::EUR($minor)` | `Money::ofMinor($minor, 'EUR')` |
+| `getMinorAmount()` / `getAmount()` / `->amount` (`int`) | `minor()` (a **string**) — or `minorInt()` where an `int` is genuinely required |
+| `getAmount()` returning a string of minor units | `minor()` — **not** `toDecimal()` |
 | `(int) $row->price`, `$a->getAmount() > $b->getAmount()` | `Money::ofMinor($row->price, …)`, `$a->isGreaterThan($b)` |
 | `getCurrency()->getCode()` / `getCurrency()` / `->currency` | `currency()->code` |
-| purchases `plus` / `minus` / `times` | `add` / `subtract` / `multiply` |
-| coupons `subtract()` (clamped at 0) | `Discount::applyTo()` or `Money::max([$x->subtract($y), Money::zero($c)])` |
+| `plus` / `minus` / `times` | `add` / `subtract` / `multiply` |
+| a `subtract()` that clamps at 0 | `Discount::applyTo()` or `Money::max([$x->subtract($y), Money::zero($c)])` |
 | `multiply(float)` / `divide(float)` | `multiply('1.19')` / `divide(Ratio)` / `percentage('20')` |
-| coupons `fromMajor(float)` | `Money::ofMajor('10.50', …)` |
+| `fromMajor(float)` | `Money::ofMajor('10.50', …)` |
 | `format($locale)` (÷ 100) | `format($locale)` (exponent-aware) |
-| coupons `allocate(list<int>)` | `allocate(...$ratios)` |
-| coupons `DiscountType::apply` / `discount` | `Discount::fixed/percentage/freeShipping()->cappedAt()->applyTo/amountFor` |
-| shops `TaxRateValue::grossDivisor()` (float) | `TaxRate::fromBasisPoints()->netFromGross()` |
-| credits `FormatCreditsAction` rescale | `MinorUnits::rescale()` / `MinorUnits::toDecimal()` |
+| `allocate(list<int>)` | `allocate(...$ratios)` |
+| a `DiscountType::apply` / `discount` helper | `Discount::fixed/percentage/freeShipping()->cappedAt()->applyTo/amountFor` |
+| a float `grossDivisor()` on a tax-rate value | `TaxRate::fromBasisPoints()->netFromGross()` |
+| a hand-written minor-unit rescale | `MinorUnits::rescale()` / `MinorUnits::toDecimal()` |
 | config `PHP_ROUND_HALF_UP` ints | `RoundingModes::fromValue(config('pkg.rounding'), 'pkg.rounding')` |
 
 ## Testing

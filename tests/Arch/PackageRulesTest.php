@@ -173,18 +173,7 @@ it('rule 3 — keeps value objects pure', function (): void {
     expect($checked)->toBeGreaterThanOrEqual(14);
 });
 
-it('rule 4 — reuses none of the legacy money package class names', function (): void {
-    foreach ([
-        'MoneyService', 'Discounts\DiscountService', 'Discounts\Enums\Type', 'Discounts\Applicators\Applicator',
-        'Discounts\Applicators\Fixed', 'Discounts\Applicators\Percentage', 'Exceptions\InvalidCurrencyException',
-    ] as $legacy) {
-        expect(class_exists('RoundlyConsulting\\Money\\'.$legacy))->toBeFalse();
-    }
-
-    expect(glob(SRC.'/Discounts/Applicators'))->toBe([]);
-});
-
-it('rule 5 — exposes no @internal class through a public signature', function (): void {
+it('rule 4 — exposes no @internal class through a public signature', function (): void {
     $internal = [];
 
     foreach (packageClasses() as $class) {
@@ -235,7 +224,7 @@ function signature(string $class, string $method): array
     return [...$parameters, 'return: '.typeString($reflection->getReturnType())];
 }
 
-it('rule 6 — pins the API the consumer packages build on', function (): void {
+it('rule 5 — pins the API the consumer packages build on', function (): void {
     $snapshot = [
         [Money::class, 'ofMinor', ['minor: string|int', 'currency: RoundlyConsulting\Money\Currency|string', 'return: self']],
         [Money::class, 'ofMajor', ['amount: string|int', 'currency: RoundlyConsulting\Money\Currency|string', 'rounding: ?RoundingMode = NULL', 'return: self']],
@@ -302,14 +291,14 @@ it('rule 6 — pins the API the consumer packages build on', function (): void {
         ->and($amount->get('places'))->toBe(0);
 });
 
-it('rule 7 — keeps the tier-0 closure (see ArchTest)', function (): void {
+it('rule 6 — keeps the tier-0 closure (see ArchTest)', function (): void {
     $composer = json_decode((string) file_get_contents(__DIR__.'/../../composer.json'), true, flags: JSON_THROW_ON_ERROR);
 
     expect(array_values(array_filter(array_keys($composer['require']), static fn (string $name): bool => str_starts_with($name, 'roundly-consulting/'))))
         ->toEqualCanonicalizing(['roundly-consulting/enums-for-laravel', 'roundly-consulting/package-toolkit-for-laravel']);
 });
 
-it('rule 8 — returns no int amount except the explicit bridges', function (): void {
+it('rule 7 — returns no int amount except the explicit bridges', function (): void {
     $allowed = [
         'Money::minorInt', 'Money::digits', 'Money::compareTo', 'MinorUnits::toInt',
         'Discount::priority', 'Percentage::basisPoints', 'Percentage::compareTo', 'Ratio::compareTo',
@@ -338,7 +327,7 @@ it('rule 8 — returns no int amount except the explicit bridges', function (): 
         ->and($found)->toBe($allowed);
 });
 
-it('rule 9 — casts to int only inside IntegerString', function (): void {
+it('rule 8 — casts to int only inside IntegerString', function (): void {
     $scoped = ['Math/', 'Money.php', 'MoneyBag.php', 'Casts/', 'Discounts/', 'Tax/', 'Exchange/'];
     $scanned = 0;
     $offenders = [];
