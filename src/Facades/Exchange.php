@@ -10,13 +10,16 @@ use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Testing\FakeExchangeRates;
 
 /**
+ * @method static string getDefaultDriver()
  * @method static \RoundlyConsulting\Money\Exchange\ExchangeRate rate(\RoundlyConsulting\Money\Currency $from, \RoundlyConsulting\Money\Currency $to, \Carbon\CarbonInterface|null $on = null)
+ * @method static \RoundlyConsulting\Money\Contracts\ExchangeRateProvider provider(string|null $name = null)
  * @method static \RoundlyConsulting\Money\Money convert(\RoundlyConsulting\Money\Money $money, \RoundlyConsulting\Money\Currency|string $to, \Carbon\CarbonInterface|null $on = null, \RoundingMode|null $rounding = null)
  * @method static \RoundlyConsulting\Money\Exchange\Conversion convertWithRate(\RoundlyConsulting\Money\Money $money, \RoundlyConsulting\Money\Currency|string $to, \Carbon\CarbonInterface|null $on = null, \RoundingMode|null $rounding = null)
- * @method static \RoundlyConsulting\Money\Contracts\ExchangeRateProvider driver(string|null $driver = null)
- * @method static \RoundlyConsulting\Money\Contracts\ExchangeRateProvider provider(string|null $name = null)
+ * @method static \RoundlyConsulting\Money\Exchange\RateStore rates()
  * @method static \RoundlyConsulting\Money\Contracts\ExchangeRateSource source(string $name)
+ * @method static mixed driver(string|null $driver = null)
  * @method static ExchangeManager extend(string $driver, \Closure $callback)
+ * @method static ExchangeManager forgetDrivers()
  *
  * @see ExchangeManager
  */

@@ -18,14 +18,14 @@ use Throwable;
 /**
  * Fetches a source (un-cached, via ExchangeManager::source()) into the rates table. Fires
  * ExchangeRatesRefreshed, or ExchangeRatesRefreshFailed and rethrows; a failed refresh
- * never deletes existing rows.
+ * never deletes existing rows. Facade form: `Exchange::rates()->refresh('ecb')`.
  */
-final class RefreshExchangeRatesAction
+final readonly class RefreshExchangeRatesAction
 {
     public function __construct(
-        private readonly ExchangeManager $exchange,
-        private readonly StoreExchangeRatesAction $store,
-        private readonly Dispatcher $events,
+        private ExchangeManager $exchange,
+        private StoreExchangeRatesAction $store,
+        private Dispatcher $events,
     ) {}
 
     public function execute(RefreshExchangeRatesData $data): RefreshResult

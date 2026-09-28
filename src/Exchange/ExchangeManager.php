@@ -27,9 +27,11 @@ use RoundlyConsulting\Money\Money;
  * The exchange driver manager (`Exchange` facade): `config`, `database`, `ecb` and `chain`
  * drivers, plus host drivers via `Exchange::extend()`. Every driver but `config` (in
  * memory) and `chain` (composes already-cached drivers) is wrapped in the caching
- * decorator when `money.exchange.cache.enabled`.
+ * decorator when `money.exchange.cache.enabled`. `rates()` manages the stored rates table.
+ *
+ * Not final only so `Exchange::fake()` can swap in a subtype that injected managers accept.
  */
-final class ExchangeManager extends Manager implements ExchangeRateProvider
+class ExchangeManager extends Manager implements ExchangeRateProvider
 {
     private const array UNCACHED = ['config', 'chain'];
 
@@ -68,6 +70,12 @@ final class ExchangeManager extends Manager implements ExchangeRateProvider
         return $this->container->make(CurrencyConverter::class)->convertWithRate($money, $to, $on, $rounding);
     }
 
+    /** The stored rates table: refresh, store, manual rates, prune. */
+    public function rates(): RateStore
+    {
+        return new RateStore($this->container);
+    }
+
     /**
      * The RAW (un-cached) driver as a fetchable source — the refresh pipeline's entry
      * point, since the caching decorator hides the source interface.
@@ -83,19 +91,19 @@ final class ExchangeManager extends Manager implements ExchangeRateProvider
         return $driver;
     }
 
-    public function createConfigDriver(): ExchangeRateProvider
+    protected function createConfigDriver(): ExchangeRateProvider
     {
         $rates = config('money.exchange.providers.config.rates');
 
         return new ArrayExchangeRateProvider(is_array($rates) ? $rates : [], $this->pivot());
     }
 
-    public function createDatabaseDriver(): DatabaseExchangeRateProvider
+    protected function createDatabaseDriver(): DatabaseExchangeRateProvider
     {
         return new DatabaseExchangeRateProvider($this->maxAgeDays(), $this->timezone(), $this->pivot());
     }
 
-    public function createEcbDriver(): EcbExchangeRateProvider
+    protected function createEcbDriver(): EcbExchangeRateProvider
     {
         return new EcbExchangeRateProvider(
             $this->container->make(CurrencyRegistry::class),
@@ -116,7 +124,7 @@ final class ExchangeManager extends Manager implements ExchangeRateProvider
         );
     }
 
-    public function createChainDriver(): ChainExchangeRateProvider
+    protected function createChainDriver(): ChainExchangeRateProvider
     {
         $names = config('money.exchange.chain');
         $providers = [];

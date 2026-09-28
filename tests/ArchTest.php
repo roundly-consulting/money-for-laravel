@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
+use RoundlyConsulting\Money\Exchange\RateStore;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Testing\Arch\ArchPresets;
 
 ArchPresets::strictTypes('RoundlyConsulting\Money');
 
 // The swappable rate model is the one intentional extension point (MoneyException is
-// abstract, which the preset already excludes).
-ArchPresets::finalByDefault('RoundlyConsulting\Money', [CurrencyRate::class]);
+// abstract, which the preset already excludes). The manager and its rates() sub-accessor
+// stay open only so Exchange::fake() can subtype them.
+ArchPresets::finalByDefault('RoundlyConsulting\Money', [CurrencyRate::class, ExchangeManager::class, RateStore::class]);
 ArchPresets::swappableModelsAreNotFinal([CurrencyRate::class => 'money.exchange.providers.database.model']);
 ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Money');
 ArchPresets::modelsResolveThroughSeam(__DIR__.'/../src', 'Support', ['money.exchange.providers.database.model']);

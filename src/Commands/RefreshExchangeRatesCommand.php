@@ -6,10 +6,8 @@ namespace RoundlyConsulting\Money\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Isolatable;
-use RoundlyConsulting\Money\Actions\RefreshExchangeRatesAction;
-use RoundlyConsulting\Money\DataTransferObjects\RefreshExchangeRatesData;
 use RoundlyConsulting\Money\Enums\EcbFeed;
-use RoundlyConsulting\Money\Jobs\RefreshExchangeRates;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Support\DateOption;
 
 final class RefreshExchangeRatesCommand extends Command implements Isolatable
@@ -23,7 +21,7 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
 
     protected $description = 'Fetch exchange rates into the money rates table';
 
-    public function handle(RefreshExchangeRatesAction $action): int
+    public function handle(ExchangeManager $exchange): int
     {
         $source = self::text($this->argument('source'));
         $feed = EcbFeed::tryFrom(self::text($this->option('feed')));
@@ -46,13 +44,13 @@ final class RefreshExchangeRatesCommand extends Command implements Isolatable
         }
 
         if ($this->option('queue')) {
-            dispatch(new RefreshExchangeRates($source, $feed->value, $from?->toDateString(), $to?->toDateString()));
+            $exchange->rates()->refreshLater($source, $feed, $from, $to);
             $this->components->info("Queued a {$feed->value} refresh from [{$source}].");
 
             return self::SUCCESS;
         }
 
-        $result = $action->execute(new RefreshExchangeRatesData($source, $feed, $from, $to));
+        $result = $exchange->rates()->refresh($source, $feed, $from, $to);
 
         $this->components->twoColumnDetail('Source', $result->source);
         $this->components->twoColumnDetail('Stored', (string) $result->stored);

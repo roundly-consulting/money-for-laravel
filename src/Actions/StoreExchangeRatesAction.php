@@ -17,6 +17,9 @@ use RoundlyConsulting\Money\Support\KeepManualRate;
  * The one write path for the rates table — refreshes and manual rates alike:
  *
  * ```php
+ * Exchange::rates()->manual('EUR', 'CZK', '25.10', $date);
+ * Exchange::rates()->store(...$rates);
+ * // or, without the facade:
  * app(StoreExchangeRatesAction::class)->execute([
  *     ExchangeRate::fromDecimal('EUR', 'CZK', '25.10', $date, source: 'manual'),
  * ]);
@@ -27,7 +30,7 @@ use RoundlyConsulting\Money\Support\KeepManualRate;
  * also for a manual rate saved while the batch is written. A rate without an exact decimal
  * of at most 40 characters (e.g. 1/3) is refused, never rounded.
  */
-final class StoreExchangeRatesAction
+final readonly class StoreExchangeRatesAction
 {
     private const int CHUNK = 500;
 

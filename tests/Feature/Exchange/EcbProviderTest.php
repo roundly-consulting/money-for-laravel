@@ -21,7 +21,11 @@ function ecbXml(string $name): string
 
 function ecb(): EcbExchangeRateProvider
 {
-    return app(ExchangeManager::class)->createEcbDriver();
+    $source = app(ExchangeManager::class)->source('ecb');
+
+    assert($source instanceof EcbExchangeRateProvider);
+
+    return $source;
 }
 
 function fakeEcb(?string $recent = null): void

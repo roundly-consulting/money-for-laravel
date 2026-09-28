@@ -6,8 +6,7 @@ namespace RoundlyConsulting\Money\Commands;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
-use RoundlyConsulting\Money\Actions\PruneExchangeRatesAction;
-use RoundlyConsulting\Money\DataTransferObjects\PruneExchangeRatesData;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Support\DateOption;
 
 final class PruneExchangeRatesCommand extends Command
@@ -20,7 +19,7 @@ final class PruneExchangeRatesCommand extends Command
 
     protected $description = 'Delete old exchange rates (manual rows are kept by default)';
 
-    public function handle(PruneExchangeRatesAction $action): int
+    public function handle(ExchangeManager $exchange): int
     {
         $before = $this->before();
 
@@ -30,7 +29,7 @@ final class PruneExchangeRatesCommand extends Command
             return self::INVALID;
         }
 
-        $count = $action->execute(new PruneExchangeRatesData($before, (bool) $this->option('include-manual'), (bool) $this->option('pretend')));
+        $count = $exchange->rates()->prune($before, (bool) $this->option('include-manual'), (bool) $this->option('pretend'));
 
         $this->components->info(($this->option('pretend') ? 'Would delete ' : 'Deleted ').$count.' exchange rate(s) before '.$before->toDateString().'.');
 

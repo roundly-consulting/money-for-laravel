@@ -303,6 +303,7 @@ it('rule 7 — returns no int amount except the explicit bridges', function (): 
         'Money::minorInt', 'Money::digits', 'Money::compareTo', 'MinorUnits::toInt',
         'Discount::priority', 'Percentage::basisPoints', 'Percentage::compareTo', 'Ratio::compareTo',
         'EcbExchangeRateProvider::skippedUnknownCurrencies',
+        'RateStore::prune', // a row count, not an amount
     ];
 
     $classes = array_values(array_filter(packageClasses(), static fn (string $class): bool => in_array($class, [Money::class, 'RoundlyConsulting\Money\MoneyBag', MinorUnits::class, Percentage::class, 'RoundlyConsulting\Money\Ratio'], true)

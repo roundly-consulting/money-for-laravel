@@ -7,8 +7,11 @@ namespace RoundlyConsulting\Money\Actions;
 use RoundlyConsulting\Money\DataTransferObjects\PruneExchangeRatesData;
 use RoundlyConsulting\Money\Support\CurrencyRateModel;
 
-/** Deletes (or, pretending, counts) rates older than a date; `manual` rows stay unless asked. */
-final class PruneExchangeRatesAction
+/**
+ * Deletes (or, pretending, counts) rates older than a date; `manual` rows stay unless asked.
+ * Facade form: `Exchange::rates()->prune(before: $date)`.
+ */
+final readonly class PruneExchangeRatesAction
 {
     public function execute(PruneExchangeRatesData $data): int
     {
