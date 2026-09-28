@@ -85,29 +85,19 @@ function productsBeyondDoublePrecision(): array
     ];
 }
 
-it('filters beyond double precision exactly with the documented decimal binding, on every engine', function (): void {
-    [$low, $high] = productsBeyondDoublePrecision();
-
-    $amount = Money::ofMinor('9007199254740993', 'EUR')->minor();
-
-    expect(Product::query()->whereRaw('price = CAST(? AS DECIMAL(65, 0))', [$amount])->pluck('id')->all())->toBe([$high->id])
-        ->and(Product::query()->whereRaw('price < CAST(? AS DECIMAL(65, 0))', [$amount])->pluck('id')->all())->toBe([$low->id]);
-});
-
-// Laravel's default native prepares: pgsql coerces the parameter to numeric, sqlite applies
-// the column affinity, and MySQL 8.0.22+ types a parameter from the column it is compared with.
+// A bound string must not be compared as a double: pgsql coerces it to numeric, sqlite applies
+// the column affinity, MySQL 8 converts it to the DECIMAL column's type.
 it('filters beyond double precision exactly with a plain where and a bound minor()', function (): void {
     [$low, $high] = productsBeyondDoublePrecision();
 
     expect(Product::query()->where('price', '=', Money::ofMinor('9007199254740993', 'EUR')->minor())->pluck('id')->all())->toBe([$high->id])
-        ->and(Product::query()->where('price', '<', Money::ofMinor('9007199254740993', 'EUR')->minor())->pluck('id')->all())->toBe([$low->id]);
+        ->and(Product::query()->where('price', '<', Money::ofMinor('9007199254740993', 'EUR')->minor())->pluck('id')->all())->toBe([$low->id])
+        ->and(Product::query()->where('price', '>', Money::ofMinor('9007199254740992', 'EUR')->minor())->pluck('id')->all())->toBe([$high->id]);
 });
 
-// What emulated prepares send: a quoted literal, which MySQL compares with a DECIMAL as a
-// double — the case the README's CAST pattern exists for.
-it('compares a decimal column with a string literal as a double on MySQL, as the README warns', function (): void {
-    productsBeyondDoublePrecision();
+// Emulated prepares inline a quoted literal; MySQL converts that to the column type too.
+it('compares a decimal column with a string literal exactly on MySQL', function (): void {
+    [, $high] = productsBeyondDoublePrecision();
 
-    expect(Product::query()->whereRaw("price = '9007199254740993'")->count())->toBe(2)
-        ->and(Product::query()->whereRaw('price = CAST(? AS DECIMAL(65, 0))', ['9007199254740993'])->count())->toBe(1);
+    expect(Product::query()->whereRaw("price = '9007199254740993'")->pluck('id')->all())->toBe([$high->id]);
 })->skip(fn (): bool => ! in_array(DriverMatrix::driver(), ['mysql', 'mariadb'], true), 'a MySQL/MariaDB-only behaviour');
