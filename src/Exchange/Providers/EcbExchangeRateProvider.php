@@ -19,6 +19,7 @@ use RoundlyConsulting\Money\Exceptions\ExchangeRateUnavailable;
 use RoundlyConsulting\Money\Exchange\Ecb\EcbXmlParser;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Ratio;
+use RoundlyConsulting\Money\Support\RateDate;
 
 /**
  * Euro foreign exchange reference rates from the European Central Bank.
@@ -80,19 +81,21 @@ final class EcbExchangeRateProvider implements ExchangeRateProvider, ExchangeRat
 
     public function rate(Currency $from, Currency $to, ?CarbonInterface $on = null): ExchangeRate
     {
-        $today = CarbonImmutable::now($this->timezone)->startOfDay();
-        $date = $on === null ? $today : CarbonImmutable::instance($on)->setTimezone($this->timezone)->startOfDay();
-
-        if ($date->greaterThan($today)) {
-            throw ExchangeRateUnavailable::futureDate($date);
+        if ($on !== null && RateDate::isFuture($on)) {
+            throw ExchangeRateUnavailable::futureDate($on);
         }
+
+        // The requested calendar day; east of the exchange timezone it may already be
+        // tomorrow there, which the daily feed serves like today.
+        $today = CarbonImmutable::now($this->timezone)->startOfDay();
+        $date = $on === null ? $today : RateDate::of($on, $this->timezone);
 
         if ($from->equals($to)) {
             return new ExchangeRate($from, $to, Ratio::one(), $date, 'ecb');
         }
 
         $feed = match (true) {
-            $date->equalTo($today) => EcbFeed::Daily,
+            $date->greaterThanOrEqualTo($today) => EcbFeed::Daily,
             $date->greaterThanOrEqualTo($today->subDays(self::RECENT_DAYS)) => EcbFeed::Recent,
             default => throw ExchangeRateUnavailable::between($from, $to, $on),
         };

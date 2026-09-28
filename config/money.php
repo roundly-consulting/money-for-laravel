@@ -134,6 +134,8 @@ return [
         'chain' => ['database', 'ecb'],
         'pivot' => 'EUR',
         'rounding' => env('MONEY_EXCHANGE_ROUNDING', 'half_even'),
+        // "Today" for undated lookups and manual rates. A requested date is always read as
+        // its own calendar day (Y-m-d in its own timezone), never shifted into this one.
         'timezone' => env('MONEY_EXCHANGE_TIMEZONE', 'Europe/Berlin'),
         'max_age_days' => (int) env('MONEY_EXCHANGE_MAX_AGE_DAYS', 7),
 

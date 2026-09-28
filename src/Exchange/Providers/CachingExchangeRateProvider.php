@@ -29,7 +29,6 @@ final class CachingExchangeRateProvider implements ExchangeRateProvider
         private readonly Repository $cache,
         private readonly int $ttl,
         private readonly string $prefix,
-        private readonly string $timezone,
     ) {}
 
     public function inner(): ExchangeRateProvider
@@ -39,7 +38,8 @@ final class CachingExchangeRateProvider implements ExchangeRateProvider
 
     public function rate(Currency $from, Currency $to, ?CarbonInterface $on = null): ExchangeRate
     {
-        $date = $on === null ? 'latest' : CarbonImmutable::instance($on)->setTimezone($this->timezone)->toDateString();
+        // A rate date is the requested calendar day, exactly as the drivers read it.
+        $date = $on === null ? 'latest' : $on->format('Y-m-d');
         $generation = (new RateCacheGeneration($this->cache, $this->prefix))->current();
         $key = "{$this->prefix}:{$generation}:{$this->driver}:{$from->code}:{$to->code}:{$date}";
 

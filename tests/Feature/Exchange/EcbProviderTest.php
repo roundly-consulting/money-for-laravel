@@ -70,6 +70,35 @@ it('serves older dates from the 90-day feed, weekends from the last published da
         ->and($wednesday->date->toDateString())->toBe('2026-09-23');
 });
 
+it('reads a requested date as its calendar day, whatever the app timezone', function (): void {
+    fakeEcb();
+    config(['app.timezone' => 'Europe/Helsinki']);
+    date_default_timezone_set('Europe/Helsinki');
+
+    try {
+        // Midnight of the 24th in Helsinki is 23:00 on the 23rd in Berlin.
+        $thursday = ecb()->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24'));
+
+        expect($thursday->date->toDateString())->toBe('2026-09-24')
+            ->and((string) $thursday->rate)->toBe((string) Ratio::of('1.1367'));
+    } finally {
+        date_default_timezone_set('UTC');
+    }
+});
+
+it('serves a day that has begun east of the exchange timezone from the daily feed', function (): void {
+    fakeEcb();
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-26 06:00', 'Asia/Tokyo')); // 23:00 on the 25th in Berlin
+
+    $rate = ecb()->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::now('Asia/Tokyo'));
+
+    expect($rate->date->toDateString())->toBe('2026-09-25')
+        ->and((string) $rate->rate)->toBe((string) Ratio::of('1.1403'));
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), 'eurofxref-daily.xml'));
+    Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), 'eurofxref-hist-90d.xml'));
+});
+
 it('refuses future, too old, stale and unknown requests', function (): void {
     fakeEcb();
 

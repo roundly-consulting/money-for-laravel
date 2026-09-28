@@ -13,12 +13,14 @@ use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Money\Ratio;
 use RoundlyConsulting\Money\Support\CurrencyRateModel;
+use RoundlyConsulting\Money\Support\RateDate;
 
 /**
  * Rates from the `money_exchange_rates` table: the newest row effective on or before the
- * requested date (taken in money.exchange.timezone) for the direct pair, else the inverse
- * pair, else triangulated through the pivot. A newest row older than max_age_days is
- * stale, and a future date has no rate yet.
+ * requested date for the direct pair, else the inverse pair, else triangulated through the
+ * pivot. The requested date is its own calendar day ({@see RateDate}); no date means today
+ * in money.exchange.timezone. A newest row older than max_age_days is stale, and a day that
+ * has not begun yet has no rate.
  */
 final class DatabaseExchangeRateProvider implements ExchangeRateProvider
 {
@@ -87,18 +89,14 @@ final class DatabaseExchangeRateProvider implements ExchangeRateProvider
 
     private function dateFor(?CarbonInterface $on): CarbonImmutable
     {
-        $today = CarbonImmutable::now($this->timezone)->startOfDay();
-
         if ($on === null) {
-            return $today;
+            return CarbonImmutable::now($this->timezone)->startOfDay();
         }
 
-        $date = CarbonImmutable::instance($on)->setTimezone($this->timezone)->startOfDay();
-
-        if ($date->greaterThan($today)) {
-            throw ExchangeRateUnavailable::futureDate($date);
+        if (RateDate::isFuture($on)) {
+            throw ExchangeRateUnavailable::futureDate($on);
         }
 
-        return $date;
+        return RateDate::of($on, $this->timezone);
     }
 }

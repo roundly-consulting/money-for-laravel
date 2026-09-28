@@ -83,7 +83,7 @@ it('caches successful lookups as scalar arrays, never failures', function (): vo
         }
     };
 
-    $cached = new CachingExchangeRateProvider($inner, 'ecb', Cache::store('array'), 60, 'money:exchange', 'Europe/Berlin');
+    $cached = new CachingExchangeRateProvider($inner, 'ecb', Cache::store('array'), 60, 'money:exchange');
 
     $first = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
     $second = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
@@ -95,8 +95,9 @@ it('caches successful lookups as scalar arrays, never failures', function (): vo
         ->and(Cache::store('array')->get(rateCacheKey('ecb:EUR:USD:latest')))->toBe(['num' => '5427', 'den' => '5000', 'date' => '2026-09-25', 'tz' => 'UTC', 'source' => 'ecb'])
         ->and($cached->inner())->toBe($inner);
 
+    // Keyed by the requested calendar day, never shifted into the exchange timezone.
     $cached->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'));
-    expect(Cache::store('array')->has(rateCacheKey('ecb:EUR:USD:2026-09-25')))->toBeTrue();
+    expect(Cache::store('array')->has(rateCacheKey('ecb:EUR:USD:2026-09-24')))->toBeTrue();
 
     expect(fn () => $cached->rate(Currency::of('EUR'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class)
         ->and(fn () => $cached->rate(Currency::of('EUR'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class)
@@ -112,7 +113,7 @@ it('returns a cached rate dated exactly like the fresh one', function (): void {
         }
     };
 
-    $cached = new CachingExchangeRateProvider($inner, 'ecb', Cache::store('array'), 60, 'money:exchange', 'Europe/Berlin');
+    $cached = new CachingExchangeRateProvider($inner, 'ecb', Cache::store('array'), 60, 'money:exchange');
 
     $fresh = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
     $hit = $cached->rate(Currency::of('EUR'), Currency::of('USD'));
@@ -123,7 +124,7 @@ it('returns a cached rate dated exactly like the fresh one', function (): void {
 });
 
 it('ignores a malformed cache entry', function (): void {
-    $cached = new CachingExchangeRateProvider(new ArrayExchangeRateProvider(['EUR/USD' => '2']), 'config', Cache::store('array'), 60, 'money:exchange', 'UTC');
+    $cached = new CachingExchangeRateProvider(new ArrayExchangeRateProvider(['EUR/USD' => '2']), 'config', Cache::store('array'), 60, 'money:exchange');
 
     foreach ([
         ['num' => 5],

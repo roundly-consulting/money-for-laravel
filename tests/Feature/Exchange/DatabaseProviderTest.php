@@ -40,9 +40,32 @@ it('dates rates in the exchange timezone, like the ecb driver', function (): voi
         ->and($this->provider->rate(Currency::of('USD'), Currency::of('CZK'))->date->timezoneName)->toBe('Europe/Berlin');
 });
 
-it('turns the requested instant into a date in the exchange timezone', function (): void {
-    // 23:30 UTC on the 24th is already the 25th in Berlin.
-    expect((string) $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'))->rate)->toBe('6/5');
+it('reads the requested date as its own calendar day, never shifted into the exchange timezone', function (): void {
+    // 23:30 UTC on the 24th is already the 25th in Berlin — but the caller asked for the 24th.
+    expect((string) $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'))->rate)->toBe('11/10');
+});
+
+it('reads a date-only input as that calendar day, whatever the app timezone', function (string $appTimezone): void {
+    config(['app.timezone' => $appTimezone]);
+    date_default_timezone_set($appTimezone);
+
+    try {
+        // Midnight of the 25th in Helsinki or Tokyo is still the 24th in Berlin.
+        $friday = $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-25'));
+
+        expect((string) $friday->rate)->toBe('6/5')
+            ->and($friday->date->toDateString())->toBe('2026-09-25')
+            ->and((string) $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24'))->rate)->toBe('11/10');
+    } finally {
+        date_default_timezone_set('UTC');
+    }
+})->with(['Europe/Helsinki', 'Asia/Tokyo', 'Pacific/Auckland', 'America/Los_Angeles']);
+
+it('serves a day that has begun where the caller is, even before it begins in the exchange timezone', function (): void {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-29 06:00', 'Asia/Tokyo')); // 23:00 on the 28th in Berlin
+
+    expect($this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::now('Asia/Tokyo'))->date->toDateString())->toBe('2026-09-25')
+        ->and(fn () => $this->provider->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-30', 'Asia/Tokyo')))->toThrow(ExchangeRateUnavailable::class, 'future');
 });
 
 it('inverts and triangulates through the pivot', function (): void {

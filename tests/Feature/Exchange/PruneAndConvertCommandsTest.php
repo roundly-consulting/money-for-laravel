@@ -51,6 +51,22 @@ it('converts from the command with rate details', function (): void {
         ->assertSuccessful();
 });
 
+it('converts on the --date calendar day, whatever the app timezone', function (string $appTimezone): void {
+    config(['app.timezone' => $appTimezone]);
+    date_default_timezone_set($appTimezone);
+
+    try {
+        CurrencyRate::factory()->pair('EUR', 'USD', '1.4')->on('2026-09-23')->from('ecb')->create();
+
+        $this->artisan('money:convert', ['amount' => '10', 'from' => 'EUR', 'to' => 'USD', '--driver' => 'database', '--date' => '2026-09-24'])
+            ->expectsOutputToContain('2026-09-24')
+            ->expectsOutputToContain('13.00 USD')
+            ->assertSuccessful();
+    } finally {
+        date_default_timezone_set('UTC');
+    }
+})->with(['Europe/Helsinki', 'Asia/Tokyo']);
+
 it('refuses dates that are not real Y-m-d dates instead of shifting or crashing', function (string $command, array $arguments): void {
     // 2026-02-30 used to roll over to 2026-03-02 (pruning two extra days); 2026/09/10 used
     // to crash with a Carbon format exception.

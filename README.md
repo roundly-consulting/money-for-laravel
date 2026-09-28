@@ -94,7 +94,7 @@ php artisan vendor:publish --tag="money-translations"
 | `exchange.chain` | `['database', 'ecb']` | — | Drivers the `chain` driver tries in order. |
 | `exchange.pivot` | `'EUR'` | — | Triangulation currency for `config` and `database`. |
 | `exchange.rounding` | `'half_even'` | `MONEY_EXCHANGE_ROUNDING` | Default rounding of conversions. |
-| `exchange.timezone` | `'Europe/Berlin'` | `MONEY_EXCHANGE_TIMEZONE` | Timezone in which a conversion instant becomes a rate date. |
+| `exchange.timezone` | `'Europe/Berlin'` | `MONEY_EXCHANGE_TIMEZONE` | Timezone of "today" for undated lookups and undated manual rates, and of the returned rate dates. A requested date is always its own calendar day (`Y-m-d` in its own timezone). |
 | `exchange.max_age_days` | `7` | `MONEY_EXCHANGE_MAX_AGE_DAYS` | A newest rate older than this is stale (refused). |
 | `exchange.cache.enabled` | `true` | `MONEY_EXCHANGE_CACHE` | Cache `database`/`ecb`/custom driver lookups. |
 | `exchange.cache.store` | `null` | `MONEY_EXCHANGE_CACHE_STORE` | Cache store (`null` = default). |

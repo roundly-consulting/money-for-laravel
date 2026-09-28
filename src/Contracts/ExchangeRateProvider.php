@@ -13,7 +13,8 @@ use RoundlyConsulting\Money\Exchange\ExchangeRate;
 interface ExchangeRateProvider
 {
     /**
-     * The rate to convert `$from` → `$to` effective on `$on` (null = latest).
+     * The rate to convert `$from` → `$to` effective on `$on` (null = latest). `$on` is a
+     * calendar day: its `Y-m-d` in its own timezone, never shifted into another one.
      *
      * @throws ExchangeRateUnavailable when no rate is known
      * @throws ExchangeRateFetchFailed when a remote source cannot be read

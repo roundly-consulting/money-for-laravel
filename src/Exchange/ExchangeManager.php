@@ -157,7 +157,6 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
             $this->cacheStore(),
             (int) config('money.exchange.cache.ttl', 3600),
             $this->cachePrefix(),
-            $this->timezone(),
         );
     }
 
