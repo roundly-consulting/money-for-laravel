@@ -164,7 +164,13 @@ Currencies::get('EUR')->exponent;                                // 2
 Currency::of('bhd')->numericCodeString();                        // "048"
 Currencies::register(Currency::custom('ETH', 18, 'Ether', 'Ξ')); // in a provider's boot()
 Money::ofMajor('1.5', 'ETH')->minor();                           // "1500000000000000000"
+Currencies::find('XYZ');                                         // null instead of throwing
+Currencies::has('EUR'); Currencies::findByNumericCode(978);
+Currencies::all(); Currencies::iso(); Currencies::custom();      // list<Currency>
 ```
+
+Without the facade, inject the `RoundlyConsulting\Money\Contracts\CurrencyRegistry` contract — the
+same singleton `Currencies` resolves.
 
 The bundled list is SIX ISO 4217 List One (published 2026-09-17) with CLDR 47 `en` symbols.
 ISO currencies can never be redefined. Custom codes are 2–10 characters, exponent 0..18, and must
@@ -307,13 +313,39 @@ published day, future dates are refused, and rates older than `max_age_days` are
 **Production recipe:** publish `money-migrations`, set `MONEY_EXCHANGE_SCHEDULE=true` (refreshes
 from the ECB at 16:30 Berlin time on weekdays) and `MONEY_EXCHANGE_DRIVER=chain`.
 
-Manual rates go through the one write path; a `manual` row is never overwritten by a refresh:
+`Exchange::rates()` manages the stored rates table. Every write goes through one path, and a
+`manual` row is never overwritten by a refresh:
 
 ```php
+use RoundlyConsulting\Money\Enums\EcbFeed;
+
+Exchange::rates()->refresh();                                        // RefreshResult: fetch the ECB daily feed now
+Exchange::rates()->refresh(source: 'ecb', feed: EcbFeed::Recent, from: $from, to: $to);
+Exchange::rates()->refreshLater(feed: EcbFeed::History);             // queue it (unique per source + feed)
+Exchange::rates()->manual('EUR', 'CZK', '25.10', $date);             // a manual rate, today if undated
+Exchange::rates()->store(...$rates);                                 // ExchangeRate ...$rates
+Exchange::rates()->prune(before: now()->subYear(), includeManual: false, pretend: true); // int
+Exchange::source('ecb')->fetch($from, $to);                          // the raw, un-cached source
+```
+
+**Without the facade.** Inject the manager, or call the action:
+
+```php
+use RoundlyConsulting\Money\Actions\StoreExchangeRatesAction;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
+
+public function __construct(private ExchangeManager $exchange) {}
+
+$this->exchange->rates()->manual('EUR', 'CZK', '25.10');
+
 app(StoreExchangeRatesAction::class)->execute([
     ExchangeRate::fromDecimal('EUR', 'CZK', '25.10', now(), source: 'manual'),
 ]);
 ```
+
+The actions are `RefreshExchangeRatesAction` (`RefreshExchangeRatesData`),
+`StoreExchangeRatesAction` (`iterable<ExchangeRate>`) and `PruneExchangeRatesAction`
+(`PruneExchangeRatesData`); the commands and the queued job run the same code.
 
 ### Commands and events
 
@@ -329,13 +361,24 @@ Events: `ExchangeRatesRefreshed` (`RefreshResult $result`) and `ExchangeRatesRef
 
 ### Testing your app
 
+`Exchange::fake()` swaps in static rates (no HTTP, no cache) for the facade, an injected
+`ExchangeManager` and `Money::convertTo()`. `Exchange::rates()` then records instead of fetching,
+writing, queueing or deleting; `source()` and `extend()` keep working.
+
 ```php
 $fake = Exchange::fake(['EUR/USD' => '1.0854']);
 
-// ... code that converts ...
+// ... code that converts, refreshes, stores or prunes ...
 
 $fake->assertRateRequested('EUR', 'USD');
+$fake->assertRefreshed('ecb', EcbFeed::Daily);        // assertNothingRefreshed()
+$fake->assertRefreshQueued('ecb');                    // assertNothingQueued()
+$fake->assertStored('EUR', 'CZK', '25.10', 'manual'); // assertNothingStored()
+$fake->assertPruned($before);                         // assertNothingPruned()
+$fake->assertNothingRequested();
 ```
+
+`Currencies` has no fake: the registry is in-memory and deterministic.
 
 ### Migrating from a private Money class
 

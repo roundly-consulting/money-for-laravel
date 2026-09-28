@@ -27,4 +27,14 @@ Initial public release.
   dates and a chain driver.
 - Artisan commands `money:currencies`, `money:rates:refresh`, `money:rates:prune` and
   `money:convert`, plus refresh events.
-- `Exchange::fake()` with `assertRateRequested()` for testing conversions.
+- `Exchange::rates()` for the stored rates table: `refresh()`, `refreshLater()`, `store()`,
+  `manual()` and `prune()`, the same code the commands and the queued job run.
+- `Exchange::fake()` with `assertRateRequested()` for testing conversions, and
+  `assertRefreshed()`, `assertRefreshQueued()`, `assertStored()` and `assertPruned()` (each with
+  an `assertNothing…()` twin) for the rates table. The fake is an `ExchangeManager`, so injected
+  managers get it too, and `source()` / `extend()` work under it.
+
+### Changed
+
+- `ExchangeManager`'s `create*Driver()` methods are now `protected`; use `Exchange::source()`
+  for the raw driver.
