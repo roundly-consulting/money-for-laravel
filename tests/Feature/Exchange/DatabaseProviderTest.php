@@ -77,6 +77,33 @@ it('inverts and triangulates through the pivot', function (): void {
         ->and($this->provider->rate(Currency::of('EUR'), Currency::of('EUR'))->rate->equals(Ratio::one()))->toBeTrue();
 });
 
+it('triangulates through fresh pivot legs when the direct pair is stale', function (): void {
+    CurrencyRate::factory()->pair('USD', 'CZK', '22')->on('2026-07-28')->create(); // an old manual cross rate
+
+    $rate = $this->provider->rate(Currency::of('USD'), Currency::of('CZK'));
+
+    expect($rate->rate->equals(Ratio::of(25)->divide(Ratio::of('1.2'))))->toBeTrue()
+        ->and($rate->source)->toBe('manual+ecb')
+        ->and($rate->date->toDateString())->toBe('2026-09-25');
+});
+
+it('prefers a fresher inverse row over an older direct one', function (): void {
+    CurrencyRate::factory()->pair('EUR', 'SEK', '11')->on('2026-09-22')->create();
+    CurrencyRate::factory()->pair('SEK', 'EUR', '0.1')->on('2026-09-25')->create();
+    CurrencyRate::factory()->pair('EUR', 'NOK', '12')->on('2026-09-25')->create();
+    CurrencyRate::factory()->pair('NOK', 'EUR', '0.1')->on('2026-09-25')->create();
+
+    expect((string) $this->provider->rate(Currency::of('EUR'), Currency::of('SEK'))->rate)->toBe('10/1')
+        ->and((string) $this->provider->rate(Currency::of('EUR'), Currency::of('NOK'))->rate)->toBe('12/1'); // a tie keeps the direct row
+});
+
+it('still reports staleness when no fresh route exists', function (): void {
+    CurrencyRate::factory()->pair('USD', 'JPY', '150')->on('2026-07-01')->create();
+
+    expect(fn () => $this->provider->rate(Currency::of('USD'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class, 'The newest [USD→JPY] rate is from 2026-07-01')
+        ->and(fn () => $this->provider->rate(Currency::of('USD'), Currency::of('GBP')))->toThrow(ExchangeRateUnavailable::class, 'The newest [EUR→GBP] rate is from 2026-09-10');
+});
+
 it('refuses stale, missing and future rates', function (): void {
     expect(fn () => $this->provider->rate(Currency::of('EUR'), Currency::of('GBP')))->toThrow(ExchangeRateUnavailable::class, 'older than 7 days')
         ->and(fn () => $this->provider->rate(Currency::of('EUR'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class)

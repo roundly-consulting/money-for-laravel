@@ -305,8 +305,8 @@ Exchange::driver('database')->rate(Currency::of('EUR'), Currency::of('USD'));
 Exchange::extend('fixer', fn ($app) => new FixerProvider(/* ... */));
 ```
 
-Drivers: `config` (static rates, triangulated through the pivot), `database` (newest row on or
-before the date), `ecb` (daily and 90-day feeds, cached, zero setup), `chain` (first success wins;
+Drivers: `config` (static rates, triangulated through the pivot), `database` (the newest row on or
+before the date, direct or inverse; through the pivot when that is missing or stale), `ecb` (daily and 90-day feeds, cached, zero setup), `chain` (first success wins;
 only "no rate" / "fetch failed" fall through). Rates are exact ratios; weekend dates use the last
 published day, future dates are refused, and rates older than `max_age_days` are stale.
 
