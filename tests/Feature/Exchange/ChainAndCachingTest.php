@@ -16,6 +16,12 @@ use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\Providers\ArrayExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\CachingExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\ChainExchangeRateProvider;
+use RoundlyConsulting\Money\Exchange\RateCacheGeneration;
+
+function rateCacheKey(string $rest): string
+{
+    return 'money:exchange:'.(new RateCacheGeneration(Cache::store('array'), 'money:exchange'))->current().':'.$rest;
+}
 
 function throwing(Throwable $exception): ExchangeRateProvider
 {
@@ -86,11 +92,11 @@ it('caches successful lookups as scalar arrays, never failures', function (): vo
         ->and((string) $second->rate)->toBe((string) $first->rate)
         ->and($second->date->toDateString())->toBe('2026-09-25')
         ->and($second->source)->toBe('ecb')
-        ->and(Cache::store('array')->get('money:exchange:ecb:EUR:USD:latest'))->toBe(['num' => '5427', 'den' => '5000', 'date' => '2026-09-25', 'tz' => 'UTC', 'source' => 'ecb'])
+        ->and(Cache::store('array')->get(rateCacheKey('ecb:EUR:USD:latest')))->toBe(['num' => '5427', 'den' => '5000', 'date' => '2026-09-25', 'tz' => 'UTC', 'source' => 'ecb'])
         ->and($cached->inner())->toBe($inner);
 
     $cached->rate(Currency::of('EUR'), Currency::of('USD'), CarbonImmutable::parse('2026-09-24 23:30', 'UTC'));
-    expect(Cache::store('array')->has('money:exchange:ecb:EUR:USD:2026-09-25'))->toBeTrue();
+    expect(Cache::store('array')->has(rateCacheKey('ecb:EUR:USD:2026-09-25')))->toBeTrue();
 
     expect(fn () => $cached->rate(Currency::of('EUR'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class)
         ->and(fn () => $cached->rate(Currency::of('EUR'), Currency::of('JPY')))->toThrow(ExchangeRateUnavailable::class)
@@ -125,7 +131,7 @@ it('ignores a malformed cache entry', function (): void {
         ['num' => '5', 'den' => '1', 'date' => '2026-09-25', 'tz' => 'Mars/Olympus', 'source' => 'x'],
         ['num' => '5', 'den' => '1', 'date' => 'yesterday', 'tz' => 'UTC', 'source' => 'x'],
     ] as $entry) {
-        Cache::store('array')->put('money:exchange:config:EUR:USD:latest', $entry, 60);
+        Cache::store('array')->put(rateCacheKey('config:EUR:USD:latest'), $entry, 60);
 
         expect((string) $cached->rate(Currency::of('EUR'), Currency::of('USD'))->rate)->toBe('2/1');
     }

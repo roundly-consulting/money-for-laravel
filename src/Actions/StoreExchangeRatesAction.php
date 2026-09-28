@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money\Actions;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Database\Eloquent\Builder;
 use RoundlyConsulting\Money\DataTransferObjects\RefreshResult;
 use RoundlyConsulting\Money\Exceptions\InvalidExchangeRate;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
+use RoundlyConsulting\Money\Exchange\RateCacheGeneration;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Money\Support\CurrencyRateModel;
 use RoundlyConsulting\Money\Support\KeepManualRate;
@@ -28,11 +30,14 @@ use RoundlyConsulting\Money\Support\KeepManualRate;
  * Upserts on (base, quote, effective_date). A `manual` row overwrites anything; any other
  * source never overwrites an existing `manual` row — enforced inside the upsert itself, so
  * also for a manual rate saved while the batch is written. A rate without an exact decimal
- * of at most 40 characters (e.g. 1/3) is refused, never rounded.
+ * of at most 40 characters (e.g. 1/3) is refused, never rounded. A write invalidates every
+ * cached rate lookup ({@see RateCacheGeneration}).
  */
 final readonly class StoreExchangeRatesAction
 {
     private const int CHUNK = 500;
+
+    public function __construct(private CacheFactory $caches) {}
 
     /**
      * @param  iterable<ExchangeRate>  $rates
@@ -90,6 +95,10 @@ final readonly class StoreExchangeRatesAction
                 ['base_currency', 'quote_currency', 'effective_date'],
                 $this->assignments($query),
             );
+        }
+
+        if ($rows !== []) {
+            RateCacheGeneration::configured($this->caches)?->bumpAfterWrite(CurrencyRateModel::query()->getModel()->getConnection());
         }
 
         return new RefreshResult($source ?? 'manual', count($rows), $skippedManual, 0, $latest);
