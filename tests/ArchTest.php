@@ -17,6 +17,10 @@ ArchPresets::swappableModelsAreNotFinal([CurrencyRate::class => 'money.exchange.
 ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Money');
 ArchPresets::modelsResolveThroughSeam(__DIR__.'/../src', 'Support', ['money.exchange.providers.database.model']);
 
+// CurrencyRate is reference data with no convenience methods, but a model that ever grows one
+// must delegate to the manager, never to an action.
+ArchPresets::modelsGoThroughTheFacade('RoundlyConsulting\Money');
+
 // Not adopted: morphColumnsUseTheSeam — the rates migration has no polymorphic column, so
 // the preset would be green forever (vacuous).
 
