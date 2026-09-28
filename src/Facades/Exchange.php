@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money\Facades;
 
+use Illuminate\Container\Container;
 use Illuminate\Support\Facades\Facade;
 use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
@@ -26,16 +27,18 @@ use RoundlyConsulting\Money\Testing\FakeExchangeRates;
 final class Exchange extends Facade
 {
     /**
-     * Swap in static rates for tests: no HTTP, no cache. `Money::convertTo()` and the
-     * converter see the fake immediately.
+     * Swap in static rates for tests: no HTTP, no cache. `Money::convertTo()`, the converter
+     * and an injected `ExchangeManager` see the fake immediately; `rates()` records instead
+     * of writing.
      *
      * @param  array<array-key, mixed>  $rates  `['EUR/USD' => '1.0854']`
      */
     public static function fake(array $rates = [], ?string $pivot = 'EUR'): FakeExchangeRates
     {
-        $fake = new FakeExchangeRates($rates, $pivot);
+        $app = self::getFacadeApplication() ?? Container::getInstance();
+        $fake = new FakeExchangeRates($app, $rates, $pivot);
 
-        self::getFacadeApplication()?->instance(ExchangeRateProvider::class, $fake);
+        $app->instance(ExchangeRateProvider::class, $fake);
         self::swap($fake);
 
         return $fake;

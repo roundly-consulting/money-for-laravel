@@ -4,24 +4,32 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money\Testing;
 
+use BadMethodCallException;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Container\Container;
 use PHPUnit\Framework\Assert;
 use RoundingMode;
-use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Currency;
+use RoundlyConsulting\Money\Enums\EcbFeed;
 use RoundlyConsulting\Money\Exchange\Conversion;
 use RoundlyConsulting\Money\Exchange\Converter;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\Providers\ArrayExchangeRateProvider;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Ratio;
 
 /**
- * What `Exchange::fake(['EUR/USD' => '1.0854'])` installs: static rates, no HTTP, no cache,
- * and assertions on what was asked for.
+ * What `Exchange::fake(['EUR/USD' => '1.0854'])` installs: static rates for every driver, no
+ * HTTP, no cache; `rates()` records refreshes, stores and prunes instead of running them.
+ * `source()` and `extend()` keep the real manager's behaviour. A subtype of the manager, so
+ * an injected `ExchangeManager` receives the fake too.
  */
-final class FakeExchangeRates implements ExchangeRateProvider
+final class FakeExchangeRates extends ExchangeManager
 {
-    private readonly ArrayExchangeRateProvider $rates;
+    private readonly ArrayExchangeRateProvider $static;
+
+    private readonly FakeRateStore $store;
 
     /** @var list<string> "FROM/TO" */
     private array $requested = [];
@@ -29,20 +37,27 @@ final class FakeExchangeRates implements ExchangeRateProvider
     /**
      * @param  array<array-key, mixed>  $rates  `['EUR/USD' => '1.0854']` or base-keyed
      */
-    public function __construct(array $rates = [], ?string $pivot = 'EUR')
+    public function __construct(Container $container, array $rates = [], ?string $pivot = 'EUR')
     {
-        $this->rates = new ArrayExchangeRateProvider($rates, $pivot, 'fake');
+        parent::__construct($container);
+
+        $this->static = new ArrayExchangeRateProvider($rates, $pivot, 'fake');
+        $this->store = new FakeRateStore($container);
     }
 
     public function rate(Currency $from, Currency $to, ?CarbonInterface $on = null): ExchangeRate
     {
         $this->requested[] = $from->code.'/'.$to->code;
 
-        return $this->rates->rate($from, $to, $on);
+        return $this->static->rate($from, $to, $on);
     }
 
-    /** Mirrors the manager, so the swapped facade keeps working. */
-    public function driver(?string $driver = null): self
+    /**
+     * Every driver answers from the static rates.
+     *
+     * @param  string|null  $driver
+     */
+    public function driver($driver = null): self
     {
         return $this;
     }
@@ -62,6 +77,22 @@ final class FakeExchangeRates implements ExchangeRateProvider
         return (new Converter($this))->convertWithRate($money, $to, $on, $rounding);
     }
 
+    public function rates(): FakeRateStore
+    {
+        return $this->store;
+    }
+
+    /**
+     * The real manager forwards unknown calls to the driver — which is the fake itself here.
+     *
+     * @param  string  $method
+     * @param  array<array-key, mixed>  $parameters
+     */
+    public function __call($method, $parameters): never
+    {
+        throw new BadMethodCallException(sprintf('Method %s::%s does not exist.', self::class, $method));
+    }
+
     public function assertRateRequested(string $from, string $to): void
     {
         $pair = strtoupper($from).'/'.strtoupper($to);
@@ -72,5 +103,45 @@ final class FakeExchangeRates implements ExchangeRateProvider
     public function assertNothingRequested(): void
     {
         Assert::assertSame([], $this->requested, 'Exchange rates were requested: '.implode(', ', $this->requested));
+    }
+
+    public function assertRefreshed(?string $source = null, ?EcbFeed $feed = null): void
+    {
+        $this->store->assertRefreshed($source, $feed);
+    }
+
+    public function assertNothingRefreshed(): void
+    {
+        $this->store->assertNothingRefreshed();
+    }
+
+    public function assertRefreshQueued(?string $source = null, ?EcbFeed $feed = null): void
+    {
+        $this->store->assertRefreshQueued($source, $feed);
+    }
+
+    public function assertNothingQueued(): void
+    {
+        $this->store->assertNothingQueued();
+    }
+
+    public function assertStored(Currency|string $from, Currency|string $to, Ratio|string|null $rate = null, ?string $source = null): void
+    {
+        $this->store->assertStored($from, $to, $rate, $source);
+    }
+
+    public function assertNothingStored(): void
+    {
+        $this->store->assertNothingStored();
+    }
+
+    public function assertPruned(?CarbonInterface $before = null): void
+    {
+        $this->store->assertPruned($before);
+    }
+
+    public function assertNothingPruned(): void
+    {
+        $this->store->assertNothingPruned();
     }
 }
