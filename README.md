@@ -73,7 +73,7 @@ php artisan vendor:publish --tag="money-translations"
 
 | Key | Default | Env | Meaning |
 |---|---|---|---|
-| `default_currency` | `'EUR'` | `MONEY_DEFAULT_CURRENCY` | Currency for `Request::money()` without one, the parser without a currency token, `money_amount` without a parameter. |
+| `default_currency` | `'EUR'` | `MONEY_DEFAULT_CURRENCY` | Currency for `Request::money()` without one, the parser without a currency token (or with a shared symbol such as `$` that this currency writes), `money_amount` without a parameter. |
 | `currencies.iso` | `true` | `MONEY_ISO_CURRENCIES` | Seed the registry with the bundled ISO 4217 list (165 currencies). `false` = custom only. |
 | `currencies.custom` | `[]` | — | Extra currencies: `'PTS' => ['exponent' => 0, 'name' => 'Points', 'symbol' => 'pts']`. Exponent 0..18. |
 | `currencies.allowed` | `null` | — | Allow-list for currencies chosen by input: the `CurrencyCode` / `currency_code` rule and `MoneyAmount::inCurrencyFrom()` (`null` = the whole registry). Never restricts stored data. |
@@ -189,7 +189,13 @@ $money->format('en', new FormatOptions(fractionDigits: 0, rounding: RoundingMode
 
 Money::parse('1 234,50 €', locale: 'sk');             // 1234.50 EUR
 Money::parse('(1,234.50)', 'USD', 'en');              // -1234.50 USD
+Money::parse('$5', 'CAD', 'en');                      // 5.00 CAD
 ```
+
+A symbol several countries write (`$`, `£`, `¥`, `kr`) is read as the currency argument, or as
+`money.default_currency` when that currency writes it; otherwise it is refused
+(`InvalidAmount`), never guessed. `Money::parse('$5')` is `5.00 USD` in a USD shop and an error
+in a EUR one.
 
 Amounts beyond 15 significant digits are formatted digit-exact (ICU only formats doubles).
 The parser reads **ASCII digits only** (`0-9`): input in a native numbering system (Arabic-Indic,

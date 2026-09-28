@@ -21,7 +21,9 @@ use RoundlyConsulting\Money\Money;
  *    is a minus, bidi marks are dropped.
  * 2. An optional currency token at the start or the end — a code (`EUR`), a registry
  *    symbol (`€`) or, for the `$currency` argument, its symbol in the locale (`Ft` in hu).
- *    An ambiguous symbol (`$`) needs the `$currency` argument.
+ *    A symbol several countries write ({@see self::SHARED_SYMBOLS}: `$`, `£`, `¥`, `kr`)
+ *    is read as the `$currency` argument when that currency writes it, else as
+ *    `money.default_currency` when that one does — and is refused otherwise, never guessed.
  * 3. A leading/trailing `-`/`+` or accounting parentheses set the sign.
  * 4. Grouping is accepted only in the integer part and only in well-formed groups.
  * 5. The canonical decimal goes to Money::ofMajor(): excess precision is refused.
@@ -37,6 +39,22 @@ final class LocalizedMoneyParser implements MoneyParser
     private const array NORMALIZE = [
         "\u{00A0}" => ' ', "\u{202F}" => ' ', "\u{2009}" => ' ', "\u{2019}" => "'",
         "\u{2212}" => '-', "\u{200E}" => '', "\u{200F}" => '', "\u{061C}" => '',
+    ];
+
+    /**
+     * Symbols several currencies write bare → the ISO codes that write them. The bundled
+     * CLDR `en` symbols give `$` to USD alone, so without this list "$5" was USD in a CAD shop.
+     */
+    private const array SHARED_SYMBOLS = [
+        '$' => [
+            'USD', 'ARS', 'AUD', 'BBD', 'BMD', 'BND', 'BSD', 'BZD', 'CAD', 'CLP', 'COP', 'CUP', 'DOP', 'FJD', 'GYD',
+            'HKD', 'JMD', 'KYD', 'LRD', 'MXN', 'NAD', 'NZD', 'SBD', 'SGD', 'SRD', 'TTD', 'TWD', 'UYU', 'XCD',
+        ],
+        '£' => ['GBP', 'EGP', 'FKP', 'GIP', 'LBP', 'SHP', 'SSP', 'SYP'],
+        '¥' => ['JPY', 'CNY'],
+        '￥' => ['JPY', 'CNY'],
+        'kr' => ['DKK', 'ISK', 'NOK', 'SEK'],
+        'kr.' => ['DKK', 'ISK'],
     ];
 
     public function __construct(private readonly CurrencyRegistry $registry) {}
@@ -115,9 +133,14 @@ final class LocalizedMoneyParser implements MoneyParser
 
         // The expected currency's symbol — the registry's, or the locale's own ("Ft" in hu,
         // "￥" in ja_JP), so input formatted in that locale reads back.
-        if ($expected !== null && ($expected->displaySymbol() === $token || $expected->code === strtoupper($token)
-            || $this->localSymbol($expected, $locale) === $token)) {
+        if ($expected !== null && ($expected->code === strtoupper($token) || $this->writes($expected, $token, $locale))) {
             return $expected;
+        }
+
+        if ($expected === null && isset(self::SHARED_SYMBOLS[$token])) {
+            $default = $this->registry->find((string) config('money.default_currency'));
+
+            return $default !== null && $this->writes($default, $token, $locale) ? $default : throw InvalidAmount::ambiguousCurrency($token);
         }
 
         $matches = array_values(array_filter(
@@ -130,6 +153,14 @@ final class LocalizedMoneyParser implements MoneyParser
             0 => throw InvalidAmount::unparsable($token, 'unknown currency'),
             default => throw InvalidAmount::ambiguousCurrency($token),
         };
+    }
+
+    /** Whether the currency writes this symbol: its registry or locale symbol, or a shared one it uses. */
+    private function writes(Currency $currency, string $token, string $locale): bool
+    {
+        return $currency->displaySymbol() === $token
+            || $this->localSymbol($currency, $locale) === $token
+            || in_array($currency->code, self::SHARED_SYMBOLS[$token] ?? [], true);
     }
 
     private function localSymbol(Currency $currency, string $locale): ?string

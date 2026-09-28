@@ -39,8 +39,49 @@ it('parses localized input', function (string $input, ?string $currency, string 
     'bidi marks' => ["\u{200F}\u{200E}-1.234,50\u{00A0}€", null, 'ar_MA', '-1234.50 EUR'],
     'default currency' => ['10', null, 'en', '10.00 EUR'],
     'symbol matching the argument' => ['$10', 'USD', 'en', '10.00 USD'],
-    'JPY' => ['¥1,234', null, 'en', '1234 JPY'],
+    'JPY' => ['¥1,234', 'JPY', 'en', '1234 JPY'],
 ]);
+
+it('never guesses a symbol several countries write', function (string $input): void {
+    // The default currency (EUR) does not write it, and no currency argument names one.
+    expect(fn () => Money::parse($input, null, 'en'))->toThrow(InvalidAmount::class, 'several currencies');
+})->with(['$5', '-$5', '£5', '¥1,234', '￥1,234', '100 kr', '100 kr.']);
+
+it('reads a shared symbol as the currency argument that writes it', function (string $input, string $currency, string $expected): void {
+    expect((string) Money::parse($input, $currency, 'en'))->toBe($expected);
+})->with([
+    'CAD' => ['$5', 'CAD', '5.00 CAD'],
+    'SGD' => ['$1,234.50', 'SGD', '1234.50 SGD'],
+    'USD' => ['$5', 'USD', '5.00 USD'],
+    'CNY' => ['¥1,234', 'CNY', '1234.00 CNY'],
+    'EGP' => ['£5', 'EGP', '5.00 EGP'],
+    'SEK' => ['100 kr', 'SEK', '100.00 SEK'],
+    'DKK' => ['100 kr.', 'DKK', '100.00 DKK'],
+]);
+
+it('still refuses a shared symbol the currency argument never writes', function (): void {
+    expect(fn () => Money::parse('$5', 'EUR', 'en'))->toThrow(CurrencyMismatch::class)
+        ->and(fn () => Money::parse('100 kr', 'EUR', 'en'))->toThrow(InvalidAmount::class);
+});
+
+it('reads a shared symbol as the default currency when that currency writes it', function (string $default, string $input, string $expected): void {
+    config(['money.default_currency' => $default]);
+
+    expect((string) Money::parse($input, locale: 'en'))->toBe($expected);
+})->with([
+    'USD shop' => ['USD', '$5', '5.00 USD'],
+    'CAD shop' => ['CAD', '$5', '5.00 CAD'],
+    'AUD shop' => ['AUD', '-$5', '-5.00 AUD'],
+    'GBP shop' => ['GBP', '£5', '5.00 GBP'],
+    'CNY shop' => ['CNY', '¥5', '5.00 CNY'],
+    'NOK shop' => ['NOK', '5 kr', '5.00 NOK'],
+]);
+
+it('refuses a shared symbol the default currency does not write', function (): void {
+    config(['money.default_currency' => 'GBP']);
+
+    expect(fn () => Money::parse('$5', locale: 'en'))->toThrow(InvalidAmount::class, 'several currencies');
+});
 
 it('refuses what it cannot parse unambiguously', function (string $input, ?string $currency, string $locale, string $exception): void {
     expect(fn () => Money::parse($input, $currency, $locale))->toThrow($exception);

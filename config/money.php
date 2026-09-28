@@ -12,7 +12,8 @@ return [
     |
     | The currency used when an amount arrives without one: Request::money()
     | without a currency argument, the parser when the input carries no currency
-    | token, and AsMoney::configCurrency('money.default_currency').
+    | token (or a symbol several countries write, such as $, that this currency
+    | writes), and AsMoney::configCurrency('money.default_currency').
     |
     */
 
