@@ -234,10 +234,11 @@ Schema::create('products', function (Blueprint $table) {
 The casts are strict: only `Money|null` can be assigned, only in a registered currency, and a
 shared currency column is never silently re-denominated — set the currency column first to
 change it on purpose. `orderBy('price')` and `sum('price')` are exact (group sums by currency).
-A filter such as `where('price', '>', $money->minor())` is exact on PostgreSQL and SQLite, but
-MySQL and MariaDB compare a DECIMAL column with a string parameter as a double, which is inexact
-beyond 2^53 minor units (about 0.009 ETH in wei). Bind the amount as a decimal there. This form
-is exact on every engine:
+A filter such as `where('price', '>', $money->minor())` is exact on PostgreSQL, SQLite and
+MySQL 8.0.22+ with Laravel's default native prepared statements. MySQL and MariaDB otherwise compare
+a DECIMAL column with a string value as a double, which is inexact beyond 2^53 minor units (about
+0.009 ETH in wei). That happens with emulated prepares (`PDO::ATTR_EMULATE_PREPARES`), older MySQL
+and MariaDB. Bind the amount as a decimal to be exact on every engine and setup:
 
 ```php
 Product::query()->whereRaw('price > CAST(? AS DECIMAL(65, 0))', [$money->minor()]);
