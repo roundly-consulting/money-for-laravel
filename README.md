@@ -233,8 +233,15 @@ Schema::create('products', function (Blueprint $table) {
 
 The casts are strict: only `Money|null` can be assigned, only in a registered currency, and a
 shared currency column is never silently re-denominated — set the currency column first to
-change it on purpose. `orderBy('price')`, `where('price', '>', $money->minor())` and
-`sum('price')` are numerically correct (group sums by currency).
+change it on purpose. `orderBy('price')` and `sum('price')` are exact (group sums by currency).
+A filter such as `where('price', '>', $money->minor())` is exact on PostgreSQL and SQLite, but
+MySQL and MariaDB compare a DECIMAL column with a string parameter as a double, which is inexact
+beyond 2^53 minor units (about 0.009 ETH in wei). Bind the amount as a decimal there. This form
+is exact on every engine:
+
+```php
+Product::query()->whereRaw('price > CAST(? AS DECIMAL(65, 0))', [$money->minor()]);
+```
 
 ### HTTP, validation, collections
 
@@ -313,8 +320,10 @@ Exchange::extend('fixer', fn ($app) => new FixerProvider(/* ... */));
 
 Drivers: `config` (static rates, triangulated through the pivot), `database` (the newest row on or
 before the date, direct or inverse; through the pivot when that is missing or stale), `ecb` (daily and 90-day feeds, cached, zero setup), `chain` (first success wins;
-only "no rate" / "fetch failed" fall through). Rates are exact ratios; weekend dates use the last
-published day, future dates are refused, and rates older than `max_age_days` are stale.
+only "no rate" / "fetch failed" fall through). Rates are exact ratios. The `database` and `ecb`
+drivers use the last published day for weekends, refuse a date that has not begun yet, and treat a
+newest rate older than `max_age_days` as stale. The `config` driver is date-agnostic: it answers
+for any date and never goes stale.
 
 **Production recipe:** publish `money-migrations`, set `MONEY_EXCHANGE_SCHEDULE=true` (refreshes
 from the ECB at 16:30 Berlin time on weekdays) and `MONEY_EXCHANGE_DRIVER=chain`.

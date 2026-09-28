@@ -71,3 +71,38 @@ it('sums beyond int64 exactly on real engines', function (): void {
 
     expect(Money::ofMinor(explode('.', $sum)[0], 'EUR')->minor())->toBe('18446744073709551614');
 })->skip(fn (): bool => DriverMatrix::driver() === 'sqlite', 'sqlite sums raise integer overflow beyond int64');
+
+/**
+ * 2^53 and 2^53 + 1 minor units: a double cannot tell them apart (0.009 ETH in wei).
+ *
+ * @return array{0: Product, 1: Product}
+ */
+function productsBeyondDoublePrecision(): array
+{
+    return [
+        Product::query()->create(['price' => Money::ofMinor('9007199254740992', 'EUR')]),
+        Product::query()->create(['price' => Money::ofMinor('9007199254740993', 'EUR')]),
+    ];
+}
+
+it('filters beyond double precision exactly with the documented decimal binding, on every engine', function (): void {
+    [$low, $high] = productsBeyondDoublePrecision();
+
+    $amount = Money::ofMinor('9007199254740993', 'EUR')->minor();
+
+    expect(Product::query()->whereRaw('price = CAST(? AS DECIMAL(65, 0))', [$amount])->pluck('id')->all())->toBe([$high->id])
+        ->and(Product::query()->whereRaw('price < CAST(? AS DECIMAL(65, 0))', [$amount])->pluck('id')->all())->toBe([$low->id]);
+});
+
+it('filters beyond double precision exactly with a plain where on pgsql and sqlite', function (): void {
+    [$low, $high] = productsBeyondDoublePrecision();
+
+    expect(Product::query()->where('price', '=', Money::ofMinor('9007199254740993', 'EUR')->minor())->pluck('id')->all())->toBe([$high->id])
+        ->and(Product::query()->where('price', '<', Money::ofMinor('9007199254740993', 'EUR')->minor())->pluck('id')->all())->toBe([$low->id]);
+})->skip(fn (): bool => in_array(DriverMatrix::driver(), ['mysql', 'mariadb'], true), 'MySQL compares a decimal with a string as a double');
+
+it('compares a decimal column with a string as a double on MySQL, as the README warns', function (): void {
+    productsBeyondDoublePrecision();
+
+    expect(Product::query()->where('price', '=', Money::ofMinor('9007199254740993', 'EUR')->minor())->count())->toBe(2);
+})->skip(fn (): bool => ! in_array(DriverMatrix::driver(), ['mysql', 'mariadb'], true), 'a MySQL/MariaDB-only behaviour');
