@@ -34,7 +34,7 @@ return [
     */
 
     'currencies' => [
-        'iso' => (bool) env('MONEY_ISO_CURRENCIES', true),
+        'iso' => env('MONEY_ISO_CURRENCIES', true),
         'custom' => [],
 
         // Allow-list for currencies chosen by input: the CurrencyCode rule (currency_code)
@@ -141,7 +141,7 @@ return [
         'max_age_days' => (int) env('MONEY_EXCHANGE_MAX_AGE_DAYS', 7),
 
         'cache' => [
-            'enabled' => (bool) env('MONEY_EXCHANGE_CACHE', true),
+            'enabled' => env('MONEY_EXCHANGE_CACHE', true),
             'store' => env('MONEY_EXCHANGE_CACHE_STORE'),
             'ttl' => (int) env('MONEY_EXCHANGE_CACHE_TTL', 3600),
             'prefix' => 'money:exchange',
@@ -169,7 +169,7 @@ return [
 
         'refresh' => [
             // ECB publishes around 16:00 CET on TARGET working days.
-            'schedule' => (bool) env('MONEY_EXCHANGE_SCHEDULE', false),
+            'schedule' => env('MONEY_EXCHANGE_SCHEDULE', false),
             'cron' => '30 16 * * 1-5',
             'timezone' => 'Europe/Berlin',
             'source' => 'ecb',

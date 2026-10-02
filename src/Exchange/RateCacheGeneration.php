@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Str;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * The stamp every cached rate lookup is keyed under. A lookup depends on more rows than its
@@ -24,7 +25,7 @@ final readonly class RateCacheGeneration
     /** The generation the exchange manager's cached drivers use; null when caching is off. */
     public static function configured(CacheFactory $caches): ?self
     {
-        if (config('money.exchange.cache.enabled') === false) {
+        if (! Config::boolean('money.exchange.cache.enabled', true)) {
             return null;
         }
 

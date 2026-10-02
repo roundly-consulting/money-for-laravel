@@ -22,6 +22,7 @@ use RoundlyConsulting\Money\Exchange\Providers\ChainExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\DatabaseExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\EcbExchangeRateProvider;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
  * The exchange driver manager (`Exchange` facade): `config`, `database`, `ecb` and `chain`
@@ -147,7 +148,7 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
 
         if (in_array($driver, self::UNCACHED, true)
             || ! $provider instanceof ExchangeRateProvider
-            || config('money.exchange.cache.enabled') === false) {
+            || ! Config::boolean('money.exchange.cache.enabled', true)) {
             return $provider;
         }
 

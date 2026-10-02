@@ -83,25 +83,25 @@ final class MoneyServiceProvider extends PackageServiceProvider
         // Always: published consumer migrations call these macros.
         MoneyBlueprint::register();
 
-        if (config('money.macros.collection') !== false) {
+        if (Config::boolean('money.macros.collection', true)) {
             MoneyMacros::registerCollectionMacros();
         }
 
-        if (config('money.macros.request') !== false) {
+        if (Config::boolean('money.macros.request', true)) {
             MoneyMacros::registerRequestMacro();
         }
 
-        if (config('money.macros.validation') !== false) {
+        if (Config::boolean('money.macros.validation', true)) {
             $this->callAfterResolving(ValidationFactory::class, static function (ValidationFactory $factory): void {
                 MoneyMacros::registerValidationRules($factory);
             });
         }
 
-        if (config('money.macros.blade') !== false) {
+        if (Config::boolean('money.macros.blade', true)) {
             $this->registerBladeDirective('money', BladeMoney::compile(...));
         }
 
-        if (config('money.exchange.refresh.schedule') === true) {
+        if (Config::boolean('money.exchange.refresh.schedule')) {
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('money:rates:refresh', [(string) config('money.exchange.refresh.source')])
                     ->cron((string) config('money.exchange.refresh.cron'))
@@ -142,7 +142,7 @@ final class MoneyServiceProvider extends PackageServiceProvider
             'Currencies' => sprintf('ISO %d / custom %d', count($registry->iso()), count($registry->custom())),
             'Formatter' => self::formatterDriver()->value,
             'Exchange driver' => (string) config('money.exchange.default'),
-            'Rates schedule' => config('money.exchange.refresh.schedule') === true
+            'Rates schedule' => Config::boolean('money.exchange.refresh.schedule')
                 ? (string) config('money.exchange.refresh.cron').' ('.(string) config('money.exchange.refresh.timezone').')'
                 : 'off',
         ];

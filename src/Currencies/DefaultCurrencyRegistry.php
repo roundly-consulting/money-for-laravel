@@ -38,7 +38,7 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
     public static function fromConfig(): self
     {
         $registry = new self(
-            config('money.currencies.iso') === false ? [] : IsoCurrencyData::load(),
+            Config::boolean('money.currencies.iso', true) ? IsoCurrencyData::load() : [],
             Schema::currencyLength(),
         );
 
