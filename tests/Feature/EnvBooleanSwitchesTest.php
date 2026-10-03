@@ -10,6 +10,7 @@ use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\Providers\CachingExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\RateCacheGeneration;
 use RoundlyConsulting\Money\MoneyServiceProvider;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 
 /**
  * env() only turns 'true'/'false' into booleans: a .env "1"/"on"/"yes" stays a string
@@ -142,4 +143,30 @@ it('reads the macro switches as booleans', function (): void {
     } finally {
         $macros->setValue(null, $original);
     }
+});
+
+it('refuses a mistyped switch (strict config)', function (string $key, Closure $read): void {
+    config([$key => 'disabled']);
+
+    expect($read)->toThrow(
+        InvalidConfigurationException::class,
+        "Configuration value [{$key}] must be a boolean (true/false, 1/0, on/off or yes/no), [disabled] given.",
+    );
+})->with([
+    'exchange cache' => ['money.exchange.cache.enabled', fn () => (new ExchangeManager(app()))->provider('ecb')],
+    'iso currencies' => ['money.currencies.iso', fn () => DefaultCurrencyRegistry::fromConfig()],
+    'request macro' => ['money.macros.request', fn () => rebootMoney()],
+    'rates schedule' => ['money.exchange.refresh.schedule', fn () => aboutMoney()],
+]);
+
+it('hands a mistyped env switch through raw (strict config)', function (): void {
+    $config = moneyConfigWithEnv([
+        'MONEY_EXCHANGE_SCHEDULE' => 'disabled',
+        'MONEY_EXCHANGE_CACHE' => 'disabled',
+        'MONEY_ISO_CURRENCIES' => 'disabled',
+    ]);
+
+    expect($config['exchange']['refresh']['schedule'])->toBe('disabled')
+        ->and($config['exchange']['cache']['enabled'])->toBe('disabled')
+        ->and($config['currencies']['iso'])->toBe('disabled');
 });
