@@ -71,7 +71,18 @@ php artisan vendor:publish --tag="money-translations"
 
 `config/money.php`. The on/off switches (`currencies.iso`, `macros.*`, `exchange.cache.enabled`,
 `exchange.refresh.schedule`) accept `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no`, from `.env`
-or the published file; anything else throws an `InvalidConfigurationException` naming the key:
+or the published file; anything else throws an `InvalidConfigurationException` naming the key.
+
+Every other setting is read strictly too. A key that is absent (`null`) takes the default below;
+a present value of the wrong shape throws an `InvalidMoneyConfiguration` naming the key, and is
+never cast or swapped for the default:
+
+- integers take an `int` or a canonical integer string (`"30"`, `"-5"`) within the stated range —
+  `"five"`, `"5.5"`, `"1e3"` or `""` throw;
+- names (currency, driver, timezone, table, cache store and prefix, URLs, locale, pattern) must be
+  non-blank strings;
+- `currencies.allowed`, `currencies.custom`, `exchange.chain` and `exchange.providers.config.rates`
+  must be arrays — a string allow-list such as `'EUR'` throws rather than allowing every currency.
 
 | Key | Default | Env | Meaning |
 |---|---|---|---|
@@ -86,30 +97,30 @@ or the published file; anything else throws an `InvalidConfigurationException` n
 | `formatting.locale` | `null` | `MONEY_LOCALE` | `null` follows `app()->getLocale()`. |
 | `formatting.display` | `'symbol'` | — | Default currency display: `symbol`, `code`, `none`. |
 | `formatting.fallback.pattern` | `'{sign}{amount} {code}'` | — | Deterministic formatter pattern; placeholders `{sign}` `{amount}` `{code}` `{symbol}`. |
-| `formatting.fallback.decimal_separator` | `'.'` | — | Also the parser's separator without intl. |
-| `formatting.fallback.thousands_separator` | `','` | — | |
+| `formatting.fallback.decimal_separator` | `'.'` | — | Non-empty. Also the parser's separator without intl. |
+| `formatting.fallback.thousands_separator` | `','` | — | Any string, including `' '` or `''` (no grouping symbol). |
 | `macros.collection` | `true` | — | Register `sumMoney` / `minMoney` / `maxMoney` / `avgMoney`. |
 | `macros.request` | `true` | — | Register `Request::money()`. |
 | `macros.blade` | `true` | — | Register `@money`. |
 | `macros.validation` | `true` | — | Register the `currency_code` and `money_amount` string rules. |
 | `exchange.default` | `'ecb'` | `MONEY_EXCHANGE_DRIVER` | Default exchange driver: `config`, `database`, `ecb`, `chain` or your own. |
-| `exchange.chain` | `['database', 'ecb']` | — | Drivers the `chain` driver tries in order. |
+| `exchange.chain` | `['database', 'ecb']` | — | Drivers the `chain` driver tries in order (a list of driver names, never `chain` itself). |
 | `exchange.pivot` | `'EUR'` | — | Triangulation currency for `config` and `database`. |
 | `exchange.rounding` | `'half_even'` | `MONEY_EXCHANGE_ROUNDING` | Default rounding of conversions. |
 | `exchange.timezone` | `'Europe/Berlin'` | `MONEY_EXCHANGE_TIMEZONE` | Timezone of "today" for undated lookups and undated manual rates, and of the returned rate dates. A requested date is always its own calendar day (`Y-m-d` in its own timezone). |
-| `exchange.max_age_days` | `7` | `MONEY_EXCHANGE_MAX_AGE_DAYS` | A newest rate older than this is stale (refused). |
+| `exchange.max_age_days` | `7` | `MONEY_EXCHANGE_MAX_AGE_DAYS` | A newest rate older than this is stale (refused). At least `0` (`0` accepts only the day's own rate). |
 | `exchange.cache.enabled` | `true` | `MONEY_EXCHANGE_CACHE` | Cache `database`/`ecb`/custom driver lookups. |
 | `exchange.cache.store` | `null` | `MONEY_EXCHANGE_CACHE_STORE` | Cache store (`null` = default). |
-| `exchange.cache.ttl` | `3600` | `MONEY_EXCHANGE_CACHE_TTL` | Seconds. |
+| `exchange.cache.ttl` | `3600` | `MONEY_EXCHANGE_CACHE_TTL` | Seconds, at least `1` (switch caching off with `cache.enabled`). |
 | `exchange.cache.prefix` | `'money:exchange'` | — | Cache key prefix. |
 | `exchange.providers.config.rates` | `[]` | — | Static rates: `['EUR' => ['USD' => '1.0854']]` (decimal strings). |
 | `exchange.providers.database.table` | `'money_exchange_rates'` | `MONEY_EXCHANGE_TABLE` | Rates table. |
 | `exchange.providers.database.model` | `CurrencyRate::class` | `MONEY_EXCHANGE_MODEL` | Swappable rate model (extend `CurrencyRate`). |
 | `exchange.providers.ecb.daily_url` / `recent_url` / `history_url` | ECB feed URLs | — | Daily, 90-day and full-history feeds. |
-| `exchange.providers.ecb.timeout` | `10` | `MONEY_ECB_TIMEOUT` | Seconds. |
-| `exchange.providers.ecb.retries` | `2` | — | Retries after the first attempt. |
-| `exchange.providers.ecb.max_bytes` | `33554432` | — | Response size cap. |
-| `exchange.providers.ecb.cache_ttl` | `3600` | — | Parsed-feed cache seconds. |
+| `exchange.providers.ecb.timeout` | `10` | `MONEY_ECB_TIMEOUT` | Seconds, at least `1`. |
+| `exchange.providers.ecb.retries` | `2` | — | Retries after the first attempt, at least `0`. |
+| `exchange.providers.ecb.max_bytes` | `33554432` | — | Response size cap, at least `1`. |
+| `exchange.providers.ecb.cache_ttl` | `3600` | — | Parsed-feed cache seconds, at least `1`. |
 | `exchange.refresh.schedule` | `false` | `MONEY_EXCHANGE_SCHEDULE` | Register the refresh schedule. |
 | `exchange.refresh.cron` / `timezone` / `source` | `'30 16 * * 1-5'` / `'Europe/Berlin'` / `'ecb'` | — | When and from where the schedule refreshes. |
 
