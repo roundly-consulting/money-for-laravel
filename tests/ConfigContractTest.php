@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 /**
  * The config contract, pinned in both directions: every key the code reads is shipped,
- * every shipped leaf is read. Reads that are not a literal `config('money.…')` call —
- * the toolkit's Config::using() validators, Support\MoneyConfig, RoundingModes::fromConfig()
- * and ModelResolver::for() — are invisible to the token scraper, so each one is named
- * exactly here (never a blanket `money.` prefix).
+ * every shipped leaf is read. The package's own readers — Support\MoneyConfig and
+ * RoundingModes::fromConfig() — take the key as an argument the token scraper does not
+ * follow into the reader, so each key read only that way is named exactly here (never a
+ * blanket `money.` prefix). The toolkit's own readers need no entry: the contract reads
+ * them natively.
  */
 it('ships exactly the config keys it reads', function (): void {
     expect(__DIR__.'/../config/money.php')->toSatisfyConfigContract(__DIR__.'/../src', [
         'extraReadPrefixes' => [
             'money.rounding',
-            'money.formatting.driver',
-            'money.formatting.display',
             'money.exchange.rounding',
-            'money.exchange.providers.database.model',
             // Support\MoneyConfig's strict readers (integer, string, list) — each key
             // appears there as a literal handed to the validator.
             'money.currencies.custom',
