@@ -86,6 +86,11 @@ or swapped for the default:
 - `currencies.allowed`, `currencies.custom`, `exchange.chain` and `exchange.providers.config.rates`
   must be arrays — a string allow-list such as `'EUR'` throws rather than allowing every currency.
 
+**Exception to the blank rule — `formatting.fallback.thousands_separator`.** Here `''` is a
+value, not "not set": `''` means no grouping (`1234.50 EUR`) and `' '` means space grouping
+(`1 234.50 EUR`), never the `','` default. Only a separator that is not set (absent or `null`)
+takes `','`; a non-string value throws `InvalidMoneyConfiguration`.
+
 | Key | Default | Env | Meaning |
 |---|---|---|---|
 | `default_currency` | `'EUR'` | `MONEY_DEFAULT_CURRENCY` | Currency for `Request::money()` without one, the parser without a currency token (or with a shared symbol such as `$` that this currency writes), `money_amount` without a parameter. |
@@ -100,7 +105,7 @@ or swapped for the default:
 | `formatting.display` | `'symbol'` | — | Default currency display: `symbol`, `code`, `none`. |
 | `formatting.fallback.pattern` | `'{sign}{amount} {code}'` | — | Deterministic formatter pattern; placeholders `{sign}` `{amount}` `{code}` `{symbol}`. |
 | `formatting.fallback.decimal_separator` | `'.'` | — | Also the parser's separator without intl. Blank = not set → `'.'`. |
-| `formatting.fallback.thousands_separator` | `','` | — | Any string. The one setting where blank is a value: `' '` groups with a space and `''` means no grouping symbol; only `null` takes `','`. |
+| `formatting.fallback.thousands_separator` | `','` | — | Any string. An exception to the blank rule (above): `''` means no grouping and `' '` groups with a space; only absent or `null` takes `','`. |
 | `macros.collection` | `true` | — | Register `sumMoney` / `minMoney` / `maxMoney` / `avgMoney`. |
 | `macros.request` | `true` | — | Register `Request::money()`. |
 | `macros.blade` | `true` | — | Register `@money`. |

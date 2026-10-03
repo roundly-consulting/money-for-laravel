@@ -87,6 +87,11 @@ return [
     | deterministic formatter (placeholders {sign} {amount} {code} {symbol});
     | its decimal separator is also the parser's separator without intl.
     |
+    | Exception to the blank rule: for `thousands_separator`, '' is a value,
+    | not "not set". '' means no grouping ("1234.50") and ' ' means space
+    | grouping ("1 234.50"), never the default; only absent or null takes
+    | ",". A non-string value throws.
+    |
     */
 
     'formatting' => [
