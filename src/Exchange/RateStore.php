@@ -17,6 +17,7 @@ use RoundlyConsulting\Money\DataTransferObjects\RefreshResult;
 use RoundlyConsulting\Money\Enums\EcbFeed;
 use RoundlyConsulting\Money\Jobs\RefreshExchangeRates;
 use RoundlyConsulting\Money\Ratio;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * `Exchange::rates()` — the stored rates table: refresh it from a source, write rates into
@@ -54,7 +55,7 @@ class RateStore
             $from instanceof Currency ? $from : Currency::of($from),
             $to instanceof Currency ? $to : Currency::of($to),
             $rate instanceof Ratio ? $rate : Ratio::of($rate),
-            $on ?? CarbonImmutable::now((string) config('money.exchange.timezone')),
+            $on ?? CarbonImmutable::now(MoneyConfig::timezone()),
             'manual',
         ));
     }

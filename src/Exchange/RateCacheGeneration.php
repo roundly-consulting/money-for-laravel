@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Str;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
@@ -29,12 +30,7 @@ final readonly class RateCacheGeneration
             return null;
         }
 
-        $store = config('money.exchange.cache.store');
-
-        return new self(
-            $caches->store(is_string($store) && $store !== '' ? $store : null),
-            (string) config('money.exchange.cache.prefix', 'money:exchange'),
-        );
+        return new self($caches->store(MoneyConfig::cacheStore()), MoneyConfig::cachePrefix());
     }
 
     public function current(): string

@@ -13,6 +13,7 @@ use RoundlyConsulting\Money\Casts\DateOnly;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Database\Factories\CurrencyRateFactory;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * One stored exchange rate: `1 base = rate × quote` on `effective_date`.
@@ -39,9 +40,7 @@ class CurrencyRate extends Model
 
     public function getTable(): string
     {
-        $table = config('money.exchange.providers.database.table');
-
-        return is_string($table) && $table !== '' ? $table : 'money_exchange_rates';
+        return MoneyConfig::table();
     }
 
     /**

@@ -5,14 +5,16 @@ declare(strict_types=1);
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use RoundlyConsulting\Money\Support\MoneyConfig;
+use RoundlyConsulting\Money\Support\Schema as MoneySchema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        $length = (int) config('money.schema.currency_length', 3);
+        $length = MoneySchema::currencyLength();
 
-        Schema::create((string) config('money.exchange.providers.database.table', 'money_exchange_rates'), function (Blueprint $table) use ($length): void {
+        Schema::create(MoneyConfig::table(), function (Blueprint $table) use ($length): void {
             $table->id();
             $table->string('base_currency', $length);
             $table->string('quote_currency', $length);

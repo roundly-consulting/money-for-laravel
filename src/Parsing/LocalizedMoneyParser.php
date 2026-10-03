@@ -12,6 +12,7 @@ use RoundlyConsulting\Money\Exceptions\InvalidAmount;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Formatting\Locales;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * A deterministic parser for human-entered amounts. ext-intl only supplies the locale's
@@ -86,7 +87,7 @@ final class LocalizedMoneyParser implements MoneyParser
             throw CurrencyMismatch::between($detected, $expected);
         }
 
-        $currency = $detected ?? $expected ?? $this->registry->get((string) config('money.default_currency'));
+        $currency = $detected ?? $expected ?? $this->registry->get(MoneyConfig::defaultCurrency());
 
         $decimal = $this->decimal($input, $parts['number'], $locale);
 
@@ -138,7 +139,7 @@ final class LocalizedMoneyParser implements MoneyParser
         }
 
         if ($expected === null && isset(self::SHARED_SYMBOLS[$token])) {
-            $default = $this->registry->find((string) config('money.default_currency'));
+            $default = $this->registry->find(MoneyConfig::defaultCurrency());
 
             return $default !== null && $this->writes($default, $token, $locale) ? $default : throw InvalidAmount::ambiguousCurrency($token);
         }

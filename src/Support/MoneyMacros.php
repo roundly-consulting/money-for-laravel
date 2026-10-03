@@ -76,7 +76,7 @@ final class MoneyMacros
         });
 
         $factory->extend('money_amount', static function (string $attribute, mixed $value, array $parameters, Validator $validator): bool {
-            $rule = MoneyAmount::in((string) ($parameters[0] ?? config('money.default_currency')));
+            $rule = MoneyAmount::in((string) ($parameters[0] ?? MoneyConfig::defaultCurrency()));
 
             return MoneyMacros::passes($rule->setData($validator->getData()), $attribute, $value, 'money_amount', $validator);
         });
@@ -123,7 +123,7 @@ final class MoneyMacros
             $currency instanceof Currency => $currency,
             is_string($currency) && $currency !== '' => $currency,
             is_string($fromInput) && trim($fromInput) !== '' => $fromInput,
-            default => (string) config('money.default_currency'),
+            default => MoneyConfig::defaultCurrency(),
         };
 
         return Money::ofMajor($amount, $currency);

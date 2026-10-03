@@ -28,6 +28,7 @@ use RoundlyConsulting\Money\Formatting\IntlMoneyFormatter;
 use RoundlyConsulting\Money\Parsing\LocalizedMoneyParser;
 use RoundlyConsulting\Money\Support\BladeMoney;
 use RoundlyConsulting\Money\Support\MoneyBlueprint;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\Money\Support\MoneyMacros;
 use RoundlyConsulting\PackageToolkit\Concerns\RegistersBladeDirectives;
 use RoundlyConsulting\PackageToolkit\Package;
@@ -103,9 +104,9 @@ final class MoneyServiceProvider extends PackageServiceProvider
 
         if (Config::boolean('money.exchange.refresh.schedule')) {
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
-                $schedule->command('money:rates:refresh', [(string) config('money.exchange.refresh.source')])
-                    ->cron((string) config('money.exchange.refresh.cron'))
-                    ->timezone((string) config('money.exchange.refresh.timezone'))
+                $schedule->command('money:rates:refresh', [MoneyConfig::refreshSource()])
+                    ->cron(MoneyConfig::refreshCron())
+                    ->timezone(MoneyConfig::refreshTimezone())
                     ->withoutOverlapping()
                     ->onOneServer();
             });
@@ -138,12 +139,12 @@ final class MoneyServiceProvider extends PackageServiceProvider
         $registry = $this->app->make(CurrencyRegistry::class);
 
         return [
-            'Default currency' => (string) config('money.default_currency'),
+            'Default currency' => MoneyConfig::defaultCurrency(),
             'Currencies' => sprintf('ISO %d / custom %d', count($registry->iso()), count($registry->custom())),
             'Formatter' => self::formatterDriver()->value,
-            'Exchange driver' => (string) config('money.exchange.default'),
+            'Exchange driver' => MoneyConfig::exchangeDriver(),
             'Rates schedule' => Config::boolean('money.exchange.refresh.schedule')
-                ? (string) config('money.exchange.refresh.cron').' ('.(string) config('money.exchange.refresh.timezone').')'
+                ? MoneyConfig::refreshCron().' ('.MoneyConfig::refreshTimezone().')'
                 : 'off',
         ];
     }

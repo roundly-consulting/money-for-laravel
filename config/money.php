@@ -57,8 +57,8 @@ return [
     */
 
     'schema' => [
-        'currency_length' => (int) env('MONEY_CURRENCY_LENGTH', 3),
-        'precision' => (int) env('MONEY_PRECISION', 38),
+        'currency_length' => env('MONEY_CURRENCY_LENGTH', 3),
+        'precision' => env('MONEY_PRECISION', 38),
     ],
 
     /*
@@ -138,12 +138,12 @@ return [
         // "Today" for undated lookups and manual rates. A requested date is always read as
         // its own calendar day (Y-m-d in its own timezone), never shifted into this one.
         'timezone' => env('MONEY_EXCHANGE_TIMEZONE', 'Europe/Berlin'),
-        'max_age_days' => (int) env('MONEY_EXCHANGE_MAX_AGE_DAYS', 7),
+        'max_age_days' => env('MONEY_EXCHANGE_MAX_AGE_DAYS', 7),
 
         'cache' => [
             'enabled' => env('MONEY_EXCHANGE_CACHE', true),
             'store' => env('MONEY_EXCHANGE_CACHE_STORE'),
-            'ttl' => (int) env('MONEY_EXCHANGE_CACHE_TTL', 3600),
+            'ttl' => env('MONEY_EXCHANGE_CACHE_TTL', 3600),
             'prefix' => 'money:exchange',
         ],
 
@@ -160,7 +160,7 @@ return [
                 'daily_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',
                 'recent_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml',
                 'history_url' => 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.xml',
-                'timeout' => (int) env('MONEY_ECB_TIMEOUT', 10),
+                'timeout' => env('MONEY_ECB_TIMEOUT', 10),
                 'retries' => 2,
                 'max_bytes' => 33554432,
                 'cache_ttl' => 3600,

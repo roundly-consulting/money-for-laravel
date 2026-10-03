@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Money\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use RoundlyConsulting\Money\Contracts\CurrencyRegistry;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * A registered currency code, optionally restricted to an allow-list (default:
@@ -44,15 +45,10 @@ final class CurrencyCode implements ValidationRule
     /** @return list<string>|null */
     private function allowed(): ?array
     {
-        $allowed = $this->allowed ?? config('money.currencies.allowed');
-
-        if (! is_array($allowed)) {
-            return null;
+        if ($this->allowed === null) {
+            return MoneyConfig::allowedCurrencies();
         }
 
-        return array_values(array_map(
-            static fn (mixed $code): string => strtoupper(trim(is_string($code) ? $code : '')),
-            $allowed,
-        ));
+        return array_map(static fn (string $code): string => strtoupper(trim($code)), $this->allowed);
     }
 }

@@ -10,6 +10,7 @@ use RoundlyConsulting\Money\Exceptions\CurrencyAlreadyRegistered;
 use RoundlyConsulting\Money\Exceptions\InvalidCurrency;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Exceptions\UnknownCurrency;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\Money\Support\Schema;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
@@ -42,9 +43,7 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
             Schema::currencyLength(),
         );
 
-        $custom = config('money.currencies.custom');
-
-        foreach (is_array($custom) ? $custom : [] as $code => $definition) {
+        foreach (MoneyConfig::customCurrencies() as $code => $definition) {
             $registry->register(self::customFromConfig((string) $code, $definition));
         }
 
@@ -137,7 +136,8 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
             throw InvalidMoneyConfiguration::invalid("money.currencies.custom.{$code}", 'expected an array with an exponent');
         }
 
-        $values = Config::for($definition, InvalidMoneyConfiguration::class);
+        $key = "money.currencies.custom.{$code}.exponent";
+        $values = Config::for([$key => $definition['exponent'] ?? null], InvalidMoneyConfiguration::class);
         $name = $definition['name'] ?? null;
         $symbol = $definition['symbol'] ?? null;
 
@@ -147,7 +147,7 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
 
         return Currency::custom(
             $code,
-            $values->integer('exponent', 0, min: 0, max: Currency::MAX_CUSTOM_EXPONENT),
+            $values->integer($key, 0, min: 0, max: Currency::MAX_CUSTOM_EXPONENT),
             $name,
             $symbol,
         );

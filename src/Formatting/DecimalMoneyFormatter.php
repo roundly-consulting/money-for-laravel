@@ -8,6 +8,7 @@ use RoundlyConsulting\Money\Contracts\MoneyFormatter;
 use RoundlyConsulting\Money\Enums\CurrencyDisplay;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
@@ -31,11 +32,11 @@ final class DecimalMoneyFormatter implements MoneyFormatter
         [$integer, $fraction] = array_pad(explode('.', ltrim($decimal, '-'), 2), 2, null);
 
         $amount = $options->grouping
-            ? AmountDigits::group($integer, (string) config('money.formatting.fallback.thousands_separator'))
+            ? AmountDigits::group($integer, MoneyConfig::thousandsSeparator())
             : $integer;
 
         if ($fraction !== null) {
-            $amount .= config('money.formatting.fallback.decimal_separator').$fraction;
+            $amount .= MoneyConfig::decimalSeparator().$fraction;
         }
 
         $currency = $money->currency();
@@ -46,7 +47,7 @@ final class DecimalMoneyFormatter implements MoneyFormatter
             CurrencyDisplay::None => ['', ''],
         };
 
-        $rendered = strtr((string) config('money.formatting.fallback.pattern'), [
+        $rendered = strtr(MoneyConfig::fallbackPattern(), [
             '{sign}' => $negative ? '-' : '',
             '{amount}' => $amount,
             '{code}' => $code,

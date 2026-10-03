@@ -22,6 +22,7 @@ use RoundlyConsulting\Money\Exchange\Providers\ChainExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\DatabaseExchangeRateProvider;
 use RoundlyConsulting\Money\Exchange\Providers\EcbExchangeRateProvider;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 
 /**
@@ -38,9 +39,7 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
 
     public function getDefaultDriver(): string
     {
-        $driver = config('money.exchange.default');
-
-        return is_string($driver) && $driver !== '' ? $driver : 'ecb';
+        return MoneyConfig::exchangeDriver();
     }
 
     /** A rate from the default driver. */
@@ -94,14 +93,12 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
 
     protected function createConfigDriver(): ExchangeRateProvider
     {
-        $rates = config('money.exchange.providers.config.rates');
-
-        return new ArrayExchangeRateProvider(is_array($rates) ? $rates : [], $this->pivot());
+        return new ArrayExchangeRateProvider(MoneyConfig::configRates(), MoneyConfig::pivot());
     }
 
     protected function createDatabaseDriver(): DatabaseExchangeRateProvider
     {
-        return new DatabaseExchangeRateProvider($this->maxAgeDays(), $this->timezone(), $this->pivot());
+        return new DatabaseExchangeRateProvider(MoneyConfig::maxAgeDays(), MoneyConfig::timezone(), MoneyConfig::pivot());
     }
 
     protected function createEcbDriver(): EcbExchangeRateProvider
@@ -110,30 +107,23 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
             $this->container->make(CurrencyRegistry::class),
             $this->cacheStore(),
             $this->container->make(HttpFactory::class),
-            [
-                'daily' => (string) config('money.exchange.providers.ecb.daily_url'),
-                'recent' => (string) config('money.exchange.providers.ecb.recent_url'),
-                'history' => (string) config('money.exchange.providers.ecb.history_url'),
-            ],
-            (int) config('money.exchange.providers.ecb.timeout', 10),
-            (int) config('money.exchange.providers.ecb.retries', 2),
-            (int) config('money.exchange.providers.ecb.max_bytes', 33_554_432),
-            (int) config('money.exchange.providers.ecb.cache_ttl', 3600),
-            $this->cachePrefix(),
-            $this->maxAgeDays(),
-            $this->timezone(),
+            MoneyConfig::ecbUrls(),
+            MoneyConfig::ecbTimeout(),
+            MoneyConfig::ecbRetries(),
+            MoneyConfig::ecbMaxBytes(),
+            MoneyConfig::ecbCacheTtl(),
+            MoneyConfig::cachePrefix(),
+            MoneyConfig::maxAgeDays(),
+            MoneyConfig::timezone(),
         );
     }
 
     protected function createChainDriver(): ChainExchangeRateProvider
     {
-        $names = config('money.exchange.chain');
         $providers = [];
 
-        foreach (is_array($names) ? $names : [] as $name) {
-            if (is_string($name) && $name !== 'chain') {
-                $providers[$name] = $this->provider($name);
-            }
+        foreach (MoneyConfig::chain() as $name) {
+            $providers[$name] = $this->provider($name);
         }
 
         return new ChainExchangeRateProvider($providers);
@@ -156,8 +146,8 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
             $provider,
             $driver,
             $this->cacheStore(),
-            (int) config('money.exchange.cache.ttl', 3600),
-            $this->cachePrefix(),
+            MoneyConfig::cacheTtl(),
+            MoneyConfig::cachePrefix(),
         );
     }
 
@@ -174,30 +164,6 @@ class ExchangeManager extends Manager implements ExchangeRateProvider
 
     private function cacheStore(): CacheRepository
     {
-        $store = config('money.exchange.cache.store');
-
-        return $this->container->make(CacheFactory::class)->store(is_string($store) && $store !== '' ? $store : null);
-    }
-
-    private function cachePrefix(): string
-    {
-        return (string) config('money.exchange.cache.prefix', 'money:exchange');
-    }
-
-    private function pivot(): ?string
-    {
-        $pivot = config('money.exchange.pivot');
-
-        return is_string($pivot) && $pivot !== '' ? strtoupper($pivot) : null;
-    }
-
-    private function maxAgeDays(): int
-    {
-        return (int) config('money.exchange.max_age_days', 7);
-    }
-
-    private function timezone(): string
-    {
-        return (string) config('money.exchange.timezone', 'Europe/Berlin');
+        return $this->container->make(CacheFactory::class)->store(MoneyConfig::cacheStore());
     }
 }

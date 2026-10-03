@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Support\DateOption;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 final class PruneExchangeRatesCommand extends Command
 {
@@ -46,7 +47,7 @@ final class PruneExchangeRatesCommand extends Command
         }
 
         if (is_string($keepDays) && ctype_digit($keepDays)) {
-            return CarbonImmutable::now((string) config('money.exchange.timezone'))->startOfDay()->subDays((int) $keepDays);
+            return CarbonImmutable::now(MoneyConfig::timezone())->startOfDay()->subDays((int) $keepDays);
         }
 
         return null;

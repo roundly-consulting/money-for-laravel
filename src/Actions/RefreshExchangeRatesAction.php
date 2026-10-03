@@ -13,6 +13,7 @@ use RoundlyConsulting\Money\Events\ExchangeRatesRefreshed;
 use RoundlyConsulting\Money\Events\ExchangeRatesRefreshFailed;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\Providers\EcbExchangeRateProvider;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use Throwable;
 
 /**
@@ -37,7 +38,7 @@ final readonly class RefreshExchangeRatesAction
                 $source = $source->usingFeed($data->feed);
             }
 
-            $to = $data->to ?? CarbonImmutable::now((string) config('money.exchange.timezone'))->startOfDay();
+            $to = $data->to ?? CarbonImmutable::now(MoneyConfig::timezone())->startOfDay();
             $from = $data->from ?? match ($data->feed) {
                 EcbFeed::Daily => $to->subDays(7),
                 EcbFeed::Recent => $to->subDays(EcbExchangeRateProvider::RECENT_DAYS),

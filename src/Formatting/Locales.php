@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RoundlyConsulting\Money\Formatting;
 
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * Resolves and validates the locale for formatting and parsing: explicit →
@@ -17,9 +18,7 @@ final class Locales
 {
     public static function resolve(?string $locale): string
     {
-        $configured = config('money.formatting.locale');
-
-        $locale ??= is_string($configured) && $configured !== '' ? $configured : app()->getLocale();
+        $locale ??= MoneyConfig::locale() ?? app()->getLocale();
 
         if (preg_match('/\A[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})*\z/', $locale) !== 1) {
             throw InvalidMoneyConfiguration::locale($locale);

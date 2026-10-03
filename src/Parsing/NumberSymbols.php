@@ -6,6 +6,7 @@ namespace RoundlyConsulting\Money\Parsing;
 
 use NumberFormatter;
 use RoundlyConsulting\Money\Currency;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * A locale's number separators and grouping sizes, as the parser needs them.
@@ -24,10 +25,7 @@ final readonly class NumberSymbols
     public static function for(string $locale): self
     {
         if (! extension_loaded('intl')) {
-            return new self(
-                (string) config('money.formatting.fallback.decimal_separator'),
-                (string) config('money.formatting.fallback.thousands_separator'),
-            );
+            return new self(MoneyConfig::decimalSeparator(), MoneyConfig::thousandsSeparator());
         }
 
         $formatter = new NumberFormatter($locale, NumberFormatter::DECIMAL);

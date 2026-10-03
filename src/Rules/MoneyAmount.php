@@ -14,6 +14,7 @@ use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Exceptions\MoneyException;
 use RoundlyConsulting\Money\Math\DecimalString;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 use RoundlyConsulting\Money\Support\Schema;
 
 /**
@@ -191,15 +192,13 @@ final class MoneyAmount implements DataAwareRule, ValidationRule
         // The input picks the currency, so it is held to the input allow-list.
         $input = data_get($this->data, $this->currencyField);
         $currency = is_string($input) ? app(CurrencyRegistry::class)->find($input) : null;
-        $allowed = config('money.currencies.allowed');
+        $allowed = MoneyConfig::allowedCurrencies();
 
-        if ($currency === null || ! is_array($allowed)) {
+        if ($currency === null || $allowed === null) {
             return $currency;
         }
 
-        $codes = array_map(static fn (mixed $code): string => strtoupper(trim(is_string($code) ? $code : '')), $allowed);
-
-        return in_array($currency->code, $codes, true) ? $currency : null;
+        return in_array($currency->code, $allowed, true) ? $currency : null;
     }
 
     private function money(mixed $value, Currency $currency, Closure $fail): ?Money
