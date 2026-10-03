@@ -21,8 +21,14 @@ it('parses with the fallback separators', function (): void {
         ->and(fn () => Money::parse('1.23,50', 'EUR'))->toThrow(InvalidAmount::class);
 })->skip(fn (): bool => extension_loaded('intl'), 'intl is loaded — the fallback runs on the no-intl leg');
 
-it('refuses an empty fallback decimal separator', function (): void {
+it('reads a blank fallback decimal separator as not set, so "." applies', function (): void {
     config(['money.formatting.fallback.decimal_separator' => '']);
+
+    expect((string) Money::parse('10.50', 'EUR'))->toBe('10.50 EUR');
+})->skip(fn (): bool => extension_loaded('intl'), 'intl is loaded — the fallback runs on the no-intl leg');
+
+it('refuses a non-string fallback decimal separator', function (): void {
+    config(['money.formatting.fallback.decimal_separator' => 5]);
 
     Money::parse('10', 'EUR');
 })->throws(InvalidMoneyConfiguration::class)->skip(fn (): bool => extension_loaded('intl'), 'intl is loaded — the fallback runs on the no-intl leg');

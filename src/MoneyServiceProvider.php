@@ -120,7 +120,7 @@ final class MoneyServiceProvider extends PackageServiceProvider
     public static function formatterDriver(?bool $intlLoaded = null): FormatterDriver
     {
         $intlLoaded ??= extension_loaded('intl');
-        $driver = Config::using(InvalidMoneyConfiguration::class)->enum('money.formatting.driver', FormatterDriver::class);
+        $driver = Config::using(InvalidMoneyConfiguration::class)->enum('money.formatting.driver', FormatterDriver::class, FormatterDriver::Auto);
 
         return match ($driver) {
             FormatterDriver::Auto => $intlLoaded ? FormatterDriver::Intl : FormatterDriver::Decimal,

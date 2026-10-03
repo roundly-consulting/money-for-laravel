@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Validator;
 use RoundlyConsulting\Money\Currencies\DefaultCurrencyRegistry;
+use RoundlyConsulting\Money\Enums\FormatterDriver;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\RateCacheGeneration;
@@ -12,6 +13,7 @@ use RoundlyConsulting\Money\Formatting\DecimalMoneyFormatter;
 use RoundlyConsulting\Money\Formatting\Locales;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Money\Money;
+use RoundlyConsulting\Money\MoneyServiceProvider;
 use RoundlyConsulting\Money\Parsing\LocalizedMoneyParser;
 use RoundlyConsulting\Money\Rules\CurrencyCode;
 use RoundlyConsulting\Money\Rules\MoneyAmount;
@@ -20,9 +22,9 @@ use RoundlyConsulting\Money\Support\Schema;
 
 /**
  * Owner rule: a typo in a host's config or env fails loudly and never falls back silently.
- * An absent (null) key takes its documented default; a present value of the wrong shape
- * throws InvalidMoneyConfiguration naming the key — nothing is cast to 0 or swapped for the
- * default.
+ * A key that is not set — absent, null or blank (`''` or whitespace, a host's `KEY=`) — takes
+ * its documented default; a present value of the wrong shape throws InvalidMoneyConfiguration
+ * naming the key — junk is never cast to 0 or swapped for the default.
  */
 
 /**
@@ -134,7 +136,6 @@ it('refuses a junk integer instead of casting it (strict config)', function (str
 })->with([
     'currency length "five"' => ['money.schema.currency_length', 'five', fn () => Schema::currencyLength()],
     'precision "5.5"' => ['money.schema.precision', '5.5', fn () => Schema::precision()],
-    'precision ""' => ['money.schema.precision', '', fn () => Schema::precision()],
     'max age "five"' => ['money.exchange.max_age_days', 'five', fn () => freshExchange()->provider('database')],
     'cache ttl "1e3"' => ['money.exchange.cache.ttl', '1e3', fn () => freshExchange()->provider('ecb')],
     'ecb timeout "five"' => ['money.exchange.providers.ecb.timeout', 'five', fn () => freshExchange()->source('ecb')],
@@ -157,31 +158,87 @@ it('refuses an integer out of range (strict config)', function (string $key, mix
     'ecb cache ttl 0' => ['money.exchange.providers.ecb.cache_ttl', '0', fn () => freshExchange()->source('ecb')],
 ]);
 
-it('refuses a blank or wrong-typed string setting instead of using the default (strict config)', function (string $key, mixed $value, Closure $read): void {
+it('reads a blank setting as not set, so its documented default applies (strict config)', function (string $blank): void {
+    foreach ([
+        'money.default_currency', 'money.schema.currency_length', 'money.schema.precision', 'money.rounding',
+        'money.formatting.driver', 'money.formatting.display', 'money.exchange.default', 'money.exchange.pivot',
+        'money.exchange.chain', 'money.exchange.rounding', 'money.exchange.timezone', 'money.exchange.max_age_days',
+        'money.exchange.cache.store', 'money.exchange.cache.ttl', 'money.exchange.cache.prefix',
+        'money.exchange.providers.config.rates', 'money.exchange.providers.database.table',
+        'money.exchange.providers.ecb.daily_url', 'money.exchange.providers.ecb.timeout',
+        'money.exchange.refresh.source', 'money.exchange.refresh.cron', 'money.exchange.refresh.timezone',
+        'money.formatting.locale', 'money.formatting.fallback.pattern', 'money.formatting.fallback.decimal_separator',
+        'money.currencies.allowed', 'money.currencies.custom',
+    ] as $key) {
+        config([$key => $blank]);
+    }
+
+    expect(MoneyConfig::defaultCurrency())->toBe('EUR')
+        ->and(Schema::currencyLength())->toBe(3)
+        ->and(Schema::precision())->toBe(38)
+        ->and(MoneyConfig::rounding())->toBe(RoundingMode::HalfAwayFromZero)
+        ->and(MoneyServiceProvider::formatterDriver(false))->toBe(FormatterDriver::Decimal)
+        ->and(MoneyConfig::exchangeDriver())->toBe('ecb')
+        ->and(MoneyConfig::pivot())->toBeNull()
+        ->and(MoneyConfig::chain())->toBe([])
+        ->and(MoneyConfig::exchangeRounding())->toBe(RoundingMode::HalfEven)
+        ->and(MoneyConfig::timezone())->toBe('Europe/Berlin')
+        ->and(MoneyConfig::maxAgeDays())->toBe(7)
+        ->and(MoneyConfig::cacheStore())->toBeNull()
+        ->and(MoneyConfig::cacheTtl())->toBe(3600)
+        ->and(MoneyConfig::cachePrefix())->toBe('money:exchange')
+        ->and(MoneyConfig::configRates())->toBe([])
+        ->and(MoneyConfig::table())->toBe('money_exchange_rates')
+        ->and(MoneyConfig::ecbUrls()['daily'])->toBe(MoneyConfig::ECB_DAILY_URL)
+        ->and(MoneyConfig::ecbTimeout())->toBe(10)
+        ->and(MoneyConfig::refreshSource())->toBe('ecb')
+        ->and(MoneyConfig::refreshCron())->toBe('30 16 * * 1-5')
+        ->and(MoneyConfig::refreshTimezone())->toBe('Europe/Berlin')
+        ->and(MoneyConfig::locale())->toBeNull()
+        ->and(MoneyConfig::fallbackPattern())->toBe('{sign}{amount} {code}')
+        ->and(MoneyConfig::decimalSeparator())->toBe('.')
+        ->and(MoneyConfig::allowedCurrencies())->toBeNull()
+        ->and(MoneyConfig::customCurrencies())->toBe([])
+        ->and((new DecimalMoneyFormatter)->format(Money::ofMajor('1234.50', 'EUR')))->toBe('1,234.50 EUR')
+        ->and((new CurrencyRate)->getTable())->toBe('money_exchange_rates')
+        ->and(app(LocalizedMoneyParser::class)->parse('12.50')->currency()->code)->toBe('EUR');
+})->with(['empty' => '', 'whitespace' => '  ']);
+
+it('still refuses junk once blank reads as not set (strict config)', function (string $key, mixed $value, Closure $read): void {
     config([$key => $value]);
 
     expect($read)->toThrow(InvalidMoneyConfiguration::class, "[{$key}]");
 })->with([
-    'default driver ""' => ['money.exchange.default', '', fn () => freshExchange()->getDefaultDriver()],
-    'pivot ""' => ['money.exchange.pivot', '', fn () => freshExchange()->provider('config')],
-    'pivot array' => ['money.exchange.pivot', ['EUR'], fn () => freshExchange()->provider('config')],
-    'timezone int' => ['money.exchange.timezone', 1, fn () => Exchange::rates()->manual('EUR', 'USD', '1.1')],
-    'cache store ""' => ['money.exchange.cache.store', '', fn () => RateCacheGeneration::configured(app('cache'))],
-    'cache store array' => ['money.exchange.cache.store', ['redis'], fn () => freshExchange()->provider('ecb')],
-    'cache prefix ""' => ['money.exchange.cache.prefix', '', fn () => RateCacheGeneration::configured(app('cache'))],
-    'table array' => ['money.exchange.providers.database.table', ['rates'], fn () => (new CurrencyRate)->getTable()],
-    'table ""' => ['money.exchange.providers.database.table', ' ', fn () => (new CurrencyRate)->getTable()],
-    'ecb url int' => ['money.exchange.providers.ecb.daily_url', 1, fn () => freshExchange()->source('ecb')],
-    'default currency ""' => ['money.default_currency', '', fn () => app(LocalizedMoneyParser::class)->parse('12.50')],
-    'locale ""' => ['money.formatting.locale', '', fn () => Locales::resolve(null)],
-    'locale array' => ['money.formatting.locale', ['en'], fn () => Locales::resolve(null)],
-    'pattern ""' => ['money.formatting.fallback.pattern', '', fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1.50', 'EUR'))],
-    'decimal separator ""' => ['money.formatting.fallback.decimal_separator', '', fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1.50', 'EUR'))],
-    'thousands separator int' => ['money.formatting.fallback.thousands_separator', 0, fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1000', 'EUR'))],
-    'refresh cron int' => ['money.exchange.refresh.cron', 5, fn () => MoneyConfig::refreshCron()],
+    'precision "five"' => ['money.schema.precision', 'five', fn () => Schema::precision()],
+    'rounding typo' => ['money.rounding', 'half_up', fn () => MoneyConfig::rounding()],
+    'exchange rounding typo' => ['money.exchange.rounding', 'bankers', fn () => MoneyConfig::exchangeRounding()],
+    'driver typo' => ['money.formatting.driver', 'icu', fn () => MoneyServiceProvider::formatterDriver(false)],
+    'display typo' => ['money.formatting.display', 'symbols', fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1.50', 'EUR'))],
 ]);
 
-it('keeps a space or an empty thousands separator (strict config)', function (string $separator, string $expected): void {
+it('refuses a wrong-typed string setting instead of using the default (strict config)', function (string $key, mixed $value, Closure $read): void {
+    config([$key => $value]);
+
+    expect($read)->toThrow(InvalidMoneyConfiguration::class, "[{$key}]");
+})->with([
+    'default driver array' => ['money.exchange.default', ['ecb'], fn () => freshExchange()->getDefaultDriver()],
+    'pivot array' => ['money.exchange.pivot', ['EUR'], fn () => freshExchange()->provider('config')],
+    'timezone int' => ['money.exchange.timezone', 1, fn () => Exchange::rates()->manual('EUR', 'USD', '1.1')],
+    'cache store array' => ['money.exchange.cache.store', ['redis'], fn () => freshExchange()->provider('ecb')],
+    'cache prefix int' => ['money.exchange.cache.prefix', 5, fn () => RateCacheGeneration::configured(app('cache'))],
+    'table array' => ['money.exchange.providers.database.table', ['rates'], fn () => (new CurrencyRate)->getTable()],
+    'ecb url int' => ['money.exchange.providers.ecb.daily_url', 1, fn () => freshExchange()->source('ecb')],
+    'default currency array' => ['money.default_currency', ['EUR'], fn () => app(LocalizedMoneyParser::class)->parse('12.50')],
+    'locale array' => ['money.formatting.locale', ['en'], fn () => Locales::resolve(null)],
+    'pattern int' => ['money.formatting.fallback.pattern', 5, fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1.50', 'EUR'))],
+    'decimal separator int' => ['money.formatting.fallback.decimal_separator', 0, fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1.50', 'EUR'))],
+    'thousands separator int' => ['money.formatting.fallback.thousands_separator', 0, fn () => (new DecimalMoneyFormatter)->format(Money::ofMajor('1000', 'EUR'))],
+    'refresh cron int' => ['money.exchange.refresh.cron', 5, fn () => MoneyConfig::refreshCron()],
+    'chain a string' => ['money.exchange.chain', 'database,ecb', fn () => MoneyConfig::chain()],
+    'allowed a string' => ['money.currencies.allowed', 'EUR', fn () => MoneyConfig::allowedCurrencies()],
+]);
+
+it('keeps a space or an empty thousands separator as a value, not as unset (strict config)', function (string $separator, string $expected): void {
     config(['money.formatting.fallback.thousands_separator' => $separator]);
 
     expect((new DecimalMoneyFormatter)->format(Money::ofMajor('1234.50', 'EUR')))->toBe($expected);

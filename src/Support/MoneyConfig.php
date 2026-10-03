@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace RoundlyConsulting\Money\Support;
 
+use RoundingMode;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\PackageToolkit\Support\Config;
 use RoundlyConsulting\PackageToolkit\Support\ConfigValidator;
 
 /**
- * Strict reads of the non-boolean `money.*` settings. A key that is absent (null) takes its
- * documented default; a present value of the wrong shape — `'five'` for a timeout, an array
- * for a table name, a blank cache prefix — throws {@see InvalidMoneyConfiguration} naming the
- * key. Nothing is cast or silently replaced by its default.
+ * Strict reads of the non-boolean `money.*` settings. A key that is not set — absent, null or
+ * blank (`''` or whitespace, a host's `KEY=`) — takes its documented default; a present value
+ * of the wrong shape — `'five'` for a timeout, an array for a table name — throws
+ * {@see InvalidMoneyConfiguration} naming the key. Junk is never cast or silently replaced by
+ * the default.
  *
  * @internal
  */
@@ -27,6 +29,18 @@ final class MoneyConfig
     public static function defaultCurrency(): string
     {
         return self::string('money.default_currency', 'EUR');
+    }
+
+    /** The service-level rounding mode (formatter digit reduction, `avgMoney`). */
+    public static function rounding(): RoundingMode
+    {
+        return RoundingModes::fromConfig('money.rounding', RoundingMode::HalfAwayFromZero);
+    }
+
+    /** The default rounding of conversions. */
+    public static function exchangeRounding(): RoundingMode
+    {
+        return RoundingModes::fromConfig('money.exchange.rounding', RoundingMode::HalfEven);
     }
 
     /** The timezone of "today" for undated lookups and manual rates. */
@@ -55,7 +69,7 @@ final class MoneyConfig
      */
     public static function chain(): array
     {
-        $names = config('money.exchange.chain');
+        $names = self::read('money.exchange.chain');
 
         if ($names === null) {
             return [];
@@ -175,18 +189,23 @@ final class MoneyConfig
         return self::string('money.formatting.fallback.pattern', '{sign}{amount} {code}');
     }
 
+    /** Not set (absent, null or blank) means `.`; anything but a string throws. */
     public static function decimalSeparator(): string
     {
-        $separator = config('money.formatting.fallback.decimal_separator') ?? '.';
+        $separator = self::read('money.formatting.fallback.decimal_separator') ?? '.';
 
-        if (! is_string($separator) || $separator === '') {
-            throw InvalidMoneyConfiguration::invalid('money.formatting.fallback.decimal_separator', 'expected a non-empty string');
+        if (! is_string($separator)) {
+            throw InvalidMoneyConfiguration::invalid('money.formatting.fallback.decimal_separator', 'expected a string');
         }
 
         return $separator;
     }
 
-    /** May be empty (no grouping symbol) or a space — but it must be a string. */
+    /**
+     * The one setting where blank is a value, not "not set": `''` means no grouping symbol and
+     * `' '` groups with a space (`1 234.50`). Only absent or null takes the default `,`; anything
+     * but a string throws.
+     */
     public static function thousandsSeparator(): string
     {
         $separator = config('money.formatting.fallback.thousands_separator') ?? ',';
@@ -215,7 +234,7 @@ final class MoneyConfig
      */
     public static function allowedCurrencies(): ?array
     {
-        $allowed = config('money.currencies.allowed');
+        $allowed = self::read('money.currencies.allowed');
 
         return $allowed === null ? null : self::currencyCodes('money.currencies.allowed', $allowed);
     }
@@ -245,38 +264,46 @@ final class MoneyConfig
         return $normalized;
     }
 
-    /** An integer setting: `$default` when absent; anything but a canonical integer in range throws. */
+    /** An integer setting: `$default` when not set; anything but a canonical integer in range throws. */
     public static function integer(string $key, int $default, ?int $min = null, ?int $max = null): int
     {
         return self::validator()->integer($key, $default, $min, $max);
     }
 
-    /** A string setting: `$default` when absent (null); anything but a non-blank string throws. */
+    /** A string setting: `$default` when not set (absent, null or blank); a non-string throws. */
     public static function string(string $key, string $default): string
     {
-        return config($key) === null ? $default : self::validator()->requireString($key);
+        return self::read($key) === null ? $default : self::validator()->requireString($key);
     }
 
-    /** An optional string setting: null when absent; anything but a non-blank string throws. */
+    /** An optional string setting: null when not set (absent, null or blank); a non-string throws. */
     public static function optionalString(string $key): ?string
     {
-        return config($key) === null ? null : self::validator()->requireString($key);
+        return self::read($key) === null ? null : self::validator()->requireString($key);
     }
 
     /**
-     * An array setting: empty when absent; anything but an array throws.
+     * An array setting: empty when not set; anything but an array throws.
      *
      * @return array<array-key, mixed>
      */
     private static function array(string $key): array
     {
-        $value = config($key) ?? [];
+        $value = self::read($key) ?? [];
 
         if (! is_array($value)) {
             throw InvalidMoneyConfiguration::invalid($key, 'expected an array');
         }
 
         return $value;
+    }
+
+    /** The raw value at `$key`, a blank string (`''` or whitespace — a host's `KEY=`) read as null. */
+    private static function read(string $key): mixed
+    {
+        $value = config($key);
+
+        return is_string($value) && trim($value) === '' ? null : $value;
     }
 
     private static function validator(): ConfigValidator

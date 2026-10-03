@@ -252,7 +252,7 @@ it('rule 5 — pins the API the consumer packages build on', function (): void {
         [MinorUnits::class, 'rescale', ['minor: string|int', 'fromScale: int', 'toScale: int', 'rounding: RoundingMode = RoundingMode::HalfAwayFromZero', 'return: string']],
         [MinorUnits::class, 'toDecimal', ['minor: string|int', 'scale: int', 'trimTrailingZeros: bool = false', 'return: string']],
         [MinorUnits::class, 'toInt', ['minor: string|int', 'return: int']],
-        [RoundingModes::class, 'fromValue', ['value: mixed', 'key: string', 'return: RoundingMode']],
+        [RoundingModes::class, 'fromValue', ['value: mixed', 'key: string', 'default: ?RoundingMode = NULL', 'return: RoundingMode']],
         [Discount::class, 'fixed', ['amount: RoundlyConsulting\Money\Money', 'return: self']],
         [Discount::class, 'percentage', ['percent: RoundlyConsulting\Money\Percentage|string|int', 'return: self']],
         [Discount::class, 'freeShipping', ['return: self']],

@@ -7,7 +7,7 @@ namespace RoundlyConsulting\Money\Formatting;
 use RoundlyConsulting\Money\Math\IntegerString;
 use RoundlyConsulting\Money\Math\MinorUnits;
 use RoundlyConsulting\Money\Money;
-use RoundlyConsulting\Money\Support\RoundingModes;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * The exact decimal a formatter renders: the amount at the requested fraction digits
@@ -22,7 +22,7 @@ final class AmountDigits
         $digits = $options->fractionDigits ?? $money->currency()->exponent;
         $digits = max(0, min(MinorUnits::MAX_SCALE, $digits));
 
-        $rounding = $options->rounding ?? RoundingModes::fromConfig('money.rounding');
+        $rounding = $options->rounding ?? MoneyConfig::rounding();
         $decimal = IntegerString::toDecimal($money->toScaled($digits, $rounding), $digits);
 
         if ($options->trimTrailingZeros && $digits > 0 && str_ends_with($decimal, '.'.str_repeat('0', $digits))) {

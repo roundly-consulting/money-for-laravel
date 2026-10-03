@@ -184,7 +184,8 @@ final class MoneyCast implements CastsAttributes, ComparesCastableAttributes, Se
             return $currency;
         }
 
-        if (! is_string($currency) || $currency === '') {
+        // Not set — null or blank (a config key's `KEY=` included) — is a missing currency.
+        if (! is_string($currency) || trim($currency) === '') {
             throw InvalidMoneyValue::missingCurrency($key, (string) $this->value);
         }
 

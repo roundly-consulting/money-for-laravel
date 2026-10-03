@@ -17,11 +17,13 @@ it('ships exactly the config keys it reads', function (): void {
             'money.exchange.rounding',
             // Support\MoneyConfig's strict readers (integer, string, list) — each key
             // appears there as a literal handed to the validator.
+            'money.currencies.allowed',
             'money.currencies.custom',
             'money.default_currency',
             'money.exchange.cache.prefix',
             'money.exchange.cache.store',
             'money.exchange.cache.ttl',
+            'money.exchange.chain',
             'money.exchange.default',
             'money.exchange.max_age_days',
             'money.exchange.pivot',
@@ -38,6 +40,7 @@ it('ships exactly the config keys it reads', function (): void {
             'money.exchange.refresh.source',
             'money.exchange.refresh.timezone',
             'money.exchange.timezone',
+            'money.formatting.fallback.decimal_separator',
             'money.formatting.fallback.pattern',
             'money.formatting.locale',
             'money.schema.currency_length',

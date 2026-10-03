@@ -24,7 +24,7 @@ final class DecimalMoneyFormatter implements MoneyFormatter
         Locales::resolve($locale);
 
         $options ??= new FormatOptions(
-            display: Config::using(InvalidMoneyConfiguration::class)->enum('money.formatting.display', CurrencyDisplay::class),
+            display: Config::using(InvalidMoneyConfiguration::class)->enum('money.formatting.display', CurrencyDisplay::class, CurrencyDisplay::Symbol),
         );
 
         $decimal = AmountDigits::resolve($money, $options);

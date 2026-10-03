@@ -52,7 +52,7 @@ final class MoneyMacros
 
             if (! $class::hasMacro('avgMoney')) {
                 $class::macro('avgMoney', function (callable|string|null $value = null, ?RoundingMode $rounding = null): Money {
-                    return Money::average(MoneyMacros::values($this, $value), $rounding ?? RoundingModes::fromConfig('money.rounding'));
+                    return Money::average(MoneyMacros::values($this, $value), $rounding ?? MoneyConfig::rounding());
                 });
             }
         }

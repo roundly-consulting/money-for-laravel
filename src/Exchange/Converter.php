@@ -12,7 +12,7 @@ use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Money\Ratio;
-use RoundlyConsulting\Money\Support\RoundingModes;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * Converts through the bound ExchangeRateProvider. Bound (not a singleton) so a fresh
@@ -37,6 +37,6 @@ final class Converter implements CurrencyConverter
 
         $rate = $this->provider->rate($money->currency(), $to, $on);
 
-        return new Conversion($money, $rate->convert($money, $rounding ?? RoundingModes::fromConfig('money.exchange.rounding')), $rate);
+        return new Conversion($money, $rate->convert($money, $rounding ?? MoneyConfig::exchangeRounding()), $rate);
     }
 }
