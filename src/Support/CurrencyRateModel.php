@@ -7,6 +7,7 @@ namespace RoundlyConsulting\Money\Support;
 use Illuminate\Database\Eloquent\Builder;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Models\CurrencyRate;
+use RoundlyConsulting\PackageToolkit\Exceptions\InvalidConfigurationException;
 use RoundlyConsulting\PackageToolkit\Support\ModelResolver;
 
 /**
@@ -17,13 +18,18 @@ final class CurrencyRateModel
     /** @return class-string<CurrencyRate> */
     public static function class(): string
     {
-        $class = ModelResolver::for('money.exchange.providers.database.model', CurrencyRate::class);
+        try {
+            return ModelResolver::for('money.exchange.providers.database.model', CurrencyRate::class);
+        } catch (InvalidConfigurationException) {
+            // Keep the package's own exception: anything that isn't a CurrencyRate — a
+            // typo, a non-model, an unrelated model — is refused, never swapped back.
+            $given = config('money.exchange.providers.database.model');
 
-        if (! is_a($class, CurrencyRate::class, true)) {
-            throw InvalidMoneyConfiguration::invalid('money.exchange.providers.database.model', "{$class} must extend ".CurrencyRate::class);
+            throw InvalidMoneyConfiguration::invalid(
+                'money.exchange.providers.database.model',
+                sprintf('must extend %s, [%s] given', CurrencyRate::class, is_string($given) ? $given : get_debug_type($given)),
+            );
         }
-
-        return $class;
     }
 
     /** @return Builder<CurrencyRate> */
