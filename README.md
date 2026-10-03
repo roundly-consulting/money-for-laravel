@@ -73,14 +73,16 @@ php artisan vendor:publish --tag="money-translations"
 `exchange.refresh.schedule`) accept `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no`, from `.env`
 or the published file; anything else throws an `InvalidConfigurationException` naming the key.
 
-Every other setting is read strictly too. A key that is absent (`null`) takes the default below;
-a present value of the wrong shape throws an `InvalidMoneyConfiguration` naming the key, and is
-never cast or swapped for the default:
+Every other setting is read strictly too. A key that is not set — absent, `null` or blank (`''`
+or whitespace, such as a `MONEY_ROUNDING=` line in `.env`) — takes the default below; a present
+value of the wrong shape throws an `InvalidMoneyConfiguration` naming the key, and is never cast
+or swapped for the default:
 
 - integers take an `int` or a canonical integer string (`"30"`, `"-5"`) within the stated range —
-  `"five"`, `"5.5"`, `"1e3"` or `""` throw;
+  `"five"`, `"5.5"` or `"1e3"` throw;
 - names (currency, driver, timezone, table, cache store and prefix, URLs, locale, pattern) must be
-  non-blank strings;
+  strings;
+- the rounding modes, `formatting.driver` and `formatting.display` must name one of their values;
 - `currencies.allowed`, `currencies.custom`, `exchange.chain` and `exchange.providers.config.rates`
   must be arrays — a string allow-list such as `'EUR'` throws rather than allowing every currency.
 
@@ -97,15 +99,15 @@ never cast or swapped for the default:
 | `formatting.locale` | `null` | `MONEY_LOCALE` | `null` follows `app()->getLocale()`. |
 | `formatting.display` | `'symbol'` | — | Default currency display: `symbol`, `code`, `none`. |
 | `formatting.fallback.pattern` | `'{sign}{amount} {code}'` | — | Deterministic formatter pattern; placeholders `{sign}` `{amount}` `{code}` `{symbol}`. |
-| `formatting.fallback.decimal_separator` | `'.'` | — | Non-empty. Also the parser's separator without intl. |
-| `formatting.fallback.thousands_separator` | `','` | — | Any string, including `' '` or `''` (no grouping symbol). |
+| `formatting.fallback.decimal_separator` | `'.'` | — | Also the parser's separator without intl. Blank = not set → `'.'`. |
+| `formatting.fallback.thousands_separator` | `','` | — | Any string. The one setting where blank is a value: `' '` groups with a space and `''` means no grouping symbol; only `null` takes `','`. |
 | `macros.collection` | `true` | — | Register `sumMoney` / `minMoney` / `maxMoney` / `avgMoney`. |
 | `macros.request` | `true` | — | Register `Request::money()`. |
 | `macros.blade` | `true` | — | Register `@money`. |
 | `macros.validation` | `true` | — | Register the `currency_code` and `money_amount` string rules. |
 | `exchange.default` | `'ecb'` | `MONEY_EXCHANGE_DRIVER` | Default exchange driver: `config`, `database`, `ecb`, `chain` or your own. |
 | `exchange.chain` | `['database', 'ecb']` | — | Drivers the `chain` driver tries in order (a list of driver names, never `chain` itself). |
-| `exchange.pivot` | `'EUR'` | — | Triangulation currency for `config` and `database`. |
+| `exchange.pivot` | `'EUR'` | — | Triangulation currency for `config` and `database`. Not set (`null` or blank) = no pivot. |
 | `exchange.rounding` | `'half_even'` | `MONEY_EXCHANGE_ROUNDING` | Default rounding of conversions. |
 | `exchange.timezone` | `'Europe/Berlin'` | `MONEY_EXCHANGE_TIMEZONE` | Timezone of "today" for undated lookups and undated manual rates, and of the returned rate dates. A requested date is always its own calendar day (`Y-m-d` in its own timezone). |
 | `exchange.max_age_days` | `7` | `MONEY_EXCHANGE_MAX_AGE_DAYS` | A newest rate older than this is stale (refused). At least `0` (`0` accepts only the day's own rate). |
