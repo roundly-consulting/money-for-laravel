@@ -147,7 +147,7 @@ final class DefaultCurrencyRegistry implements CurrencyRegistry
 
         return Currency::custom(
             $code,
-            $values->intBetween('exponent', 0, Currency::MAX_CUSTOM_EXPONENT, 0),
+            $values->integer('exponent', 0, min: 0, max: Currency::MAX_CUSTOM_EXPONENT),
             $name,
             $symbol,
         );
