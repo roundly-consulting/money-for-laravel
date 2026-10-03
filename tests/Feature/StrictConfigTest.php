@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use RoundlyConsulting\Money\Currencies\DefaultCurrencyRegistry;
 use RoundlyConsulting\Money\Enums\FormatterDriver;
@@ -245,6 +246,31 @@ it('keeps a space or an empty thousands separator as a value, not as unset (stri
 })->with([
     'space' => [' ', '1 234.50 EUR'],
     'none' => ['', '1234.50 EUR'],
+]);
+
+/**
+ * An exception to the fleet's "blank = not set" rule: `''` (no grouping) and `' '` (space
+ * grouping) are meaningful separators, so neither falls back to `','`. Only a separator that
+ * is not set (absent or null) takes the default.
+ */
+it('takes the , thousands separator only when the separator is not set (strict config)', function (Closure $leaveUnset): void {
+    $leaveUnset();
+
+    expect(MoneyConfig::thousandsSeparator())->toBe(',')
+        ->and((new DecimalMoneyFormatter)->format(Money::ofMajor('1234.50', 'EUR')))->toBe('1,234.50 EUR');
+})->with([
+    'the shipped config' => [static function (): void {}],
+    'absent' => [static fn () => config(['money.formatting.fallback' => Arr::except((array) config('money.formatting.fallback'), 'thousands_separator')])],
+    'null' => [static fn () => config(['money.formatting.fallback.thousands_separator' => null])],
+]);
+
+it('refuses a non-string thousands separator instead of reading it as either answer (strict config)', function (mixed $junk): void {
+    config(['money.formatting.fallback.thousands_separator' => $junk]);
+
+    expect(fn () => MoneyConfig::thousandsSeparator())
+        ->toThrow(InvalidMoneyConfiguration::class, '[money.formatting.fallback.thousands_separator]');
+})->with([
+    'false' => [false], 'int' => [0], 'array' => [[',']],
 ]);
 
 it('refuses a malformed exchange chain instead of skipping entries (strict config)', function (mixed $chain): void {
