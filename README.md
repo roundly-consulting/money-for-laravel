@@ -71,7 +71,7 @@ php artisan vendor:publish --tag="money-translations"
 
 `config/money.php`. The on/off switches (`currencies.iso`, `macros.*`, `exchange.cache.enabled`,
 `exchange.refresh.schedule`) accept `true`/`false`, `1`/`0`, `on`/`off` or `yes`/`no`, from `.env`
-or the published file; an unrecognised value falls back to the default:
+or the published file; anything else throws an `InvalidConfigurationException` naming the key:
 
 | Key | Default | Env | Meaning |
 |---|---|---|---|
