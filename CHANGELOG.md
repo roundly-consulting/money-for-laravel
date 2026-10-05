@@ -6,6 +6,26 @@ All notable changes to `money-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+### Changed
+
+- `Exchange::fake()` now triangulates through the configured `money.exchange.pivot` when no pivot
+  is passed, like the real drivers; it used `EUR` regardless of config. To keep the old behaviour,
+  pass it explicitly: `Exchange::fake($rates, 'EUR')`. `null` still means no triangulation.
+- Documentation: the README model example declares `$fillable`, so its `Product::create()` call
+  no longer throws `MassAssignmentException`.
+- Documentation: supported databases are PostgreSQL and MySQL; SQL Server is not supported.
+
+### Fixed
+
+- `AsMoney` casts no longer cache the `Money` object. Reading an attribute before changing its
+  currency column, currency attribute or configured currency no longer reverts that change on
+  `save()` or throws `CurrencyMismatch` from `save()` / `toArray()`.
+- Under `Exchange::fake()`, `Exchange::rates()->store()` and `manual()` refuse a rate with no exact
+  decimal of at most 40 characters (e.g. `1/3`) with `InvalidExchangeRate`, as the real store does.
+- Under `Exchange::fake()`, `Exchange::rates()->refresh()` refuses a driver that cannot be fetched
+  from (`database`, `config`, `chain`, an unknown name) with `InvalidMoneyConfiguration`, as the
+  real refresh does.
+
 ## 1.0.0 - 2026-10-03
 
 Initial public release.
