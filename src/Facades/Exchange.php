@@ -32,11 +32,13 @@ final class Exchange extends Facade
      * of writing.
      *
      * @param  array<array-key, mixed>  $rates  `['EUR/USD' => '1.0854']`
+     * @param  string|null  $pivot  omitted: the configured `money.exchange.pivot`, like the real
+     *                              drivers; `null`: no triangulation
      */
-    public static function fake(array $rates = [], ?string $pivot = 'EUR'): FakeExchangeRates
+    public static function fake(array $rates = [], ?string $pivot = null): FakeExchangeRates
     {
         $app = self::getFacadeApplication() ?? Container::getInstance();
-        $fake = new FakeExchangeRates($app, $rates, $pivot);
+        $fake = func_num_args() < 2 ? new FakeExchangeRates($app, $rates) : new FakeExchangeRates($app, $rates, $pivot);
 
         $app->instance(ExchangeRateProvider::class, $fake);
         self::swap($fake);

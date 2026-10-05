@@ -11,6 +11,7 @@ use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Contracts\ExchangeRateSource;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Enums\EcbFeed;
+use RoundlyConsulting\Money\Exceptions\ExchangeRateUnavailable;
 use RoundlyConsulting\Money\Exceptions\InvalidExchangeRate;
 use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
@@ -237,3 +238,28 @@ it('validates the source on a fake store built without the manager', function ()
 
     (new FakeRateStore(app()))->refresh('database');
 })->throws(InvalidMoneyConfiguration::class, '[database] cannot be fetched from');
+
+// The fake triangulates like the configured drivers, so a host without a pivot (or with
+// another one) gets the same answers under test as in production.
+it('defaults to the configured pivot', function (): void {
+    config(['money.exchange.pivot' => null]);
+    Exchange::fake(['EUR/USD' => '1.10', 'EUR/CZK' => '25.00']);
+
+    expect(fn () => Money::ofMinor(1000, 'USD')->convertTo('CZK'))->toThrow(ExchangeRateUnavailable::class);
+
+    config(['money.exchange.pivot' => 'usd']);
+    Exchange::fake(['USD/EUR' => '0.90', 'USD/CZK' => '23.00']);
+
+    expect((string) Money::ofMinor(1000, 'EUR')->convertTo('CZK'))->toBe('255.56 CZK');
+});
+
+it('keeps an explicit pivot, null included, over the configured one', function (): void {
+    Exchange::fake(['EUR/USD' => '1.10', 'EUR/CZK' => '25.00'], null);
+
+    expect(fn () => Money::ofMinor(1000, 'USD')->convertTo('CZK'))->toThrow(ExchangeRateUnavailable::class);
+
+    config(['money.exchange.pivot' => null]);
+    Exchange::fake(['EUR/USD' => '1.10', 'EUR/CZK' => '25.00'], 'EUR');
+
+    expect((string) Money::ofMinor(1000, 'USD')->convertTo('CZK'))->toBe('227.27 CZK');
+});

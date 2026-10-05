@@ -18,6 +18,7 @@ use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\Providers\ArrayExchangeRateProvider;
 use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Money\Ratio;
+use RoundlyConsulting\Money\Support\MoneyConfig;
 
 /**
  * What `Exchange::fake(['EUR/USD' => '1.0854'])` installs: static rates for every driver, no
@@ -36,12 +37,14 @@ final class FakeExchangeRates extends ExchangeManager
 
     /**
      * @param  array<array-key, mixed>  $rates  `['EUR/USD' => '1.0854']` or base-keyed
+     * @param  string|null  $pivot  omitted: the configured `money.exchange.pivot`, like the real
+     *                              drivers; `null`: no triangulation
      */
-    public function __construct(Container $container, array $rates = [], ?string $pivot = 'EUR')
+    public function __construct(Container $container, array $rates = [], ?string $pivot = null)
     {
         parent::__construct($container);
 
-        $this->static = new ArrayExchangeRateProvider($rates, $pivot, 'fake');
+        $this->static = new ArrayExchangeRateProvider($rates, func_num_args() < 3 ? MoneyConfig::pivot() : $pivot, 'fake');
         $this->store = new FakeRateStore($container, $this);
     }
 
