@@ -15,6 +15,7 @@ use RoundlyConsulting\Money\Enums\EcbFeed;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\RateStore;
 use RoundlyConsulting\Money\Ratio;
+use RoundlyConsulting\Money\Support\StorableRate;
 
 /**
  * What `Exchange::rates()` returns under `Exchange::fake()`: records every call and never
@@ -46,8 +47,13 @@ final class FakeRateStore extends RateStore
         $this->queued[] = self::refreshData($source, $feed, $from, $to);
     }
 
+    /** Refuses what the real store refuses (a rate with no exact decimal), recording nothing. */
     public function store(ExchangeRate ...$rates): RefreshResult
     {
+        foreach ($rates as $rate) {
+            StorableRate::decimal($rate);
+        }
+
         $latest = null;
 
         foreach ($rates as $rate) {

@@ -11,6 +11,7 @@ use RoundlyConsulting\Money\Contracts\ExchangeRateProvider;
 use RoundlyConsulting\Money\Contracts\ExchangeRateSource;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Enums\EcbFeed;
+use RoundlyConsulting\Money\Exceptions\InvalidExchangeRate;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\Providers\EcbExchangeRateProvider;
@@ -179,4 +180,21 @@ it('records the artisan commands too, since they go through the manager', functi
     $fake->assertRefreshed('ecb', EcbFeed::Recent);
     $fake->assertRefreshQueued('ecb', EcbFeed::Daily);
     $fake->assertPruned(CarbonImmutable::parse('2026-01-01'));
+});
+
+// The fake must refuse what the real write path refuses, or a test passes on a rate that
+// throws in production.
+it('refuses rates that cannot be stored exactly, like the real store', function (): void {
+    $fake = Exchange::fake();
+    $date = CarbonImmutable::parse('2026-09-24');
+    $tooLong = '12345678901234567890.12345678901234567891';
+
+    expect(strlen($tooLong))->toBe(41)
+        ->and(fn () => Exchange::rates()->manual('EUR', 'USD', Ratio::of(1, 3)))->toThrow(InvalidExchangeRate::class, 'exact decimal')
+        ->and(fn () => Exchange::rates()->store(
+            ExchangeRate::fromDecimal('EUR', 'CZK', '25.10', $date, 'ecb'),
+            ExchangeRate::fromDecimal('EUR', 'USD', $tooLong, $date, 'ecb'),
+        ))->toThrow(InvalidExchangeRate::class, 'exact decimal');
+
+    $fake->assertNothingStored();
 });

@@ -8,12 +8,12 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Database\Eloquent\Builder;
 use RoundlyConsulting\Money\DataTransferObjects\RefreshResult;
-use RoundlyConsulting\Money\Exceptions\InvalidExchangeRate;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\RateCacheGeneration;
 use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Money\Support\CurrencyRateModel;
 use RoundlyConsulting\Money\Support\KeepManualRate;
+use RoundlyConsulting\Money\Support\StorableRate;
 
 /**
  * The one write path for the rates table — refreshes and manual rates alike:
@@ -49,12 +49,7 @@ final readonly class StoreExchangeRatesAction
         $source = null;
 
         foreach ($rates as $rate) {
-            $decimal = $rate->rate->toExactDecimal(38);
-
-            if ($decimal === null || strlen($decimal) > 40) {
-                throw InvalidExchangeRate::notStorable((string) $rate->rate);
-            }
-
+            $decimal = StorableRate::decimal($rate);
             $date = $rate->date->format('Y-m-d');
             $key = $rate->from->code.'|'.$rate->to->code.'|'.$date;
 
