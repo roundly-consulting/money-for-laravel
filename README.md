@@ -61,6 +61,8 @@ Schema::create('products', function (Blueprint $table) {
 
 final class Product extends Model
 {
+    protected $fillable = ['price'];
+
     protected function casts(): array
     {
         return ['price' => AsMoney::class];
