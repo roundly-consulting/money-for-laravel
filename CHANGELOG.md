@@ -6,6 +6,8 @@ All notable changes to `money-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+## 1.0.1 - 2026-10-05
+
 ### Changed
 
 - `Exchange::fake()` now triangulates through the configured `money.exchange.pivot` when no pivot
@@ -14,6 +16,9 @@ All notable changes to `money-for-laravel` are documented in this file. The form
 - Documentation: the README model example declares `$fillable`, so its `Product::create()` call
   no longer throws `MassAssignmentException`.
 - Documentation: supported databases are PostgreSQL and MySQL; SQL Server is not supported.
+- Documentation: the README hero image uses an absolute URL, so it renders on Packagist and other
+  sites.
+- Maintenance: `composer.json` `homepage` and `support.docs` link to the package documentation.
 
 ### Fixed
 
