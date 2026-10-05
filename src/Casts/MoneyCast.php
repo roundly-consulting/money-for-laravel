@@ -42,6 +42,13 @@ final class MoneyCast implements CastsAttributes, ComparesCastableAttributes, Se
 
     public const string MODE_ATTRIBUTE = 'attribute';
 
+    /**
+     * Eloquent re-runs set() on a cached object at save()/toArray(), so a read would pin the
+     * currency it was read in and override a later change of the currency column, config or
+     * attribute. Money is immutable, so re-reading costs nothing.
+     */
+    public bool $withoutObjectCaching = true;
+
     public function __construct(
         private readonly string $mode,
         private readonly ?string $value = null,

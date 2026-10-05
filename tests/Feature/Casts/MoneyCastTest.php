@@ -99,6 +99,63 @@ it('asserts the currency of single-column modes', function (): void {
         ->and(fn () => $product->total = Money::ofMinor(1, 'EUR'))->toThrow(CurrencyMismatch::class);
 });
 
+// Eloquent re-runs set() on a cached cast object at save()/toArray(); a read must never
+// change what a later write stores.
+it('does not let a read pin the default mode currency column', function (): void {
+    $product = Product::query()->create(['price' => Money::ofMajor('19.99', 'EUR')]);
+    $fresh = Product::query()->findOrFail($product->id);
+
+    expect((string) $fresh->price)->toBe('19.99 EUR');
+
+    $fresh->price_currency = 'USD';
+    $fresh->save();
+
+    expect(Product::query()->whereKey($product->id)->toBase()->value('price_currency'))->toBe('USD')
+        ->and((string) Product::query()->findOrFail($product->id)->price)->toBe('19.99 USD');
+});
+
+it('follows a changed attribute currency after a read', function (): void {
+    $product = Product::query()->create(['shop_currency' => 'CZK', 'total' => Money::ofMinor(900, 'CZK')]);
+    $fresh = Product::query()->findOrFail($product->id);
+
+    expect((string) $fresh->total)->toBe('9.00 CZK');
+
+    $fresh->shop_currency = 'EUR';
+
+    expect($fresh->toArray()['total'])->toBe(['minor' => '900', 'decimal' => '9.00', 'currency' => 'EUR'])
+        ->and($fresh->save())->toBeTrue()
+        ->and((string) Product::query()->findOrFail($product->id)->total)->toBe('9.00 EUR');
+});
+
+it('follows a changed config currency after a read', function (): void {
+    $product = Product::query()->create(['store_credit' => Money::ofMinor(700, 'EUR')]);
+    $fresh = Product::query()->findOrFail($product->id);
+
+    expect((string) $fresh->store_credit)->toBe('7.00 EUR');
+
+    config(['money.default_currency' => 'USD']);
+
+    expect($fresh->toArray()['store_credit'])->toBe(['minor' => '700', 'decimal' => '7.00', 'currency' => 'USD'])
+        ->and($fresh->save())->toBeTrue();
+});
+
+it('re-denominates a shared column on purpose after a read of its sibling', function (): void {
+    $product = Product::query()->create([
+        'compare_at_price' => Money::ofMinor(1200, 'EUR'),
+        'sale_price' => Money::ofMinor(1000, 'EUR'),
+    ]);
+    $fresh = Product::query()->findOrFail($product->id);
+
+    expect((string) $fresh->compare_at_price)->toBe('12.00 EUR');
+
+    $fresh->fill(['currency' => 'USD', 'sale_price' => Money::ofMinor(900, 'USD')])->save();
+
+    $stored = Product::query()->findOrFail($product->id);
+
+    expect((string) $stored->sale_price)->toBe('9.00 USD')
+        ->and((string) $stored->compare_at_price)->toBe('12.00 USD');
+});
+
 it('refuses raw numbers and unregistered currencies', function (): void {
     $product = new Product;
 
