@@ -12,6 +12,7 @@ use RoundlyConsulting\Money\Contracts\ExchangeRateSource;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\Enums\EcbFeed;
 use RoundlyConsulting\Money\Exceptions\InvalidExchangeRate;
+use RoundlyConsulting\Money\Exceptions\InvalidMoneyConfiguration;
 use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\Providers\EcbExchangeRateProvider;
@@ -20,6 +21,7 @@ use RoundlyConsulting\Money\Models\CurrencyRate;
 use RoundlyConsulting\Money\Money;
 use RoundlyConsulting\Money\MoneyBag;
 use RoundlyConsulting\Money\Ratio;
+use RoundlyConsulting\Money\Testing\FakeRateStore;
 
 it('is seen by Money::convertTo even after a real converter was resolved', function (): void {
     app(CurrencyConverter::class);
@@ -198,3 +200,40 @@ it('refuses rates that cannot be stored exactly, like the real store', function 
 
     $fake->assertNothingStored();
 });
+
+it('refuses a refresh from a driver the real refresh cannot fetch from', function (string $source): void {
+    $fake = Exchange::fake();
+
+    expect(fn () => Exchange::rates()->refresh($source))->toThrow(InvalidMoneyConfiguration::class, "[{$source}] cannot be fetched from");
+
+    $fake->assertNothingRefreshed();
+})->with(['database', 'config', 'chain', 'nope']);
+
+it('still records a refresh from ecb and from an extended source', function (): void {
+    $fake = Exchange::fake();
+
+    Exchange::extend('static', fn (): ExchangeRateSource => new class implements ExchangeRateSource
+    {
+        public function name(): string
+        {
+            return 'static';
+        }
+
+        public function fetch(CarbonInterface $from, CarbonInterface $to): iterable
+        {
+            throw new LogicException('the fake must never fetch');
+        }
+    });
+
+    Exchange::rates()->refresh('ecb');
+    Exchange::rates()->refresh('static');
+
+    $fake->assertRefreshed('ecb');
+    $fake->assertRefreshed('static');
+});
+
+it('validates the source on a fake store built without the manager', function (): void {
+    Exchange::fake();
+
+    (new FakeRateStore(app()))->refresh('database');
+})->throws(InvalidMoneyConfiguration::class, '[database] cannot be fetched from');

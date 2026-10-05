@@ -42,7 +42,7 @@ final class FakeExchangeRates extends ExchangeManager
         parent::__construct($container);
 
         $this->static = new ArrayExchangeRateProvider($rates, $pivot, 'fake');
-        $this->store = new FakeRateStore($container);
+        $this->store = new FakeRateStore($container, $this);
     }
 
     public function rate(Currency $from, Currency $to, ?CarbonInterface $on = null): ExchangeRate

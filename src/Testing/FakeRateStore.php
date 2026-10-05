@@ -6,12 +6,14 @@ namespace RoundlyConsulting\Money\Testing;
 
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Contracts\Container\Container;
 use PHPUnit\Framework\Assert;
 use RoundlyConsulting\Money\Currency;
 use RoundlyConsulting\Money\DataTransferObjects\PruneExchangeRatesData;
 use RoundlyConsulting\Money\DataTransferObjects\RefreshExchangeRatesData;
 use RoundlyConsulting\Money\DataTransferObjects\RefreshResult;
 use RoundlyConsulting\Money\Enums\EcbFeed;
+use RoundlyConsulting\Money\Exchange\ExchangeManager;
 use RoundlyConsulting\Money\Exchange\ExchangeRate;
 use RoundlyConsulting\Money\Exchange\RateStore;
 use RoundlyConsulting\Money\Ratio;
@@ -35,8 +37,16 @@ final class FakeRateStore extends RateStore
     /** @var list<PruneExchangeRatesData> */
     private array $pruned = [];
 
+    public function __construct(Container $container, private readonly ?ExchangeManager $exchange = null)
+    {
+        parent::__construct($container);
+    }
+
+    /** Refuses a source the real refresh cannot fetch from (as `Exchange::source()` does), without fetching. */
     public function refresh(string $source = 'ecb', EcbFeed $feed = EcbFeed::Daily, ?CarbonInterface $from = null, ?CarbonInterface $to = null): RefreshResult
     {
+        ($this->exchange ?? $this->container->make(ExchangeManager::class))->source($source);
+
         $this->refreshed[] = self::refreshData($source, $feed, $from, $to);
 
         return new RefreshResult($source, 0, 0, 0, null);
