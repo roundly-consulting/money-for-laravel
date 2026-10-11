@@ -40,8 +40,8 @@
         "illuminate/support": "^12.0|^13.0",
         "illuminate/validation": "^12.0|^13.0",
         "illuminate/view": "^12.0|^13.0",
-        "roundly-consulting/enums-for-laravel": "^1.0",
-        "roundly-consulting/package-toolkit-for-laravel": "^1.0"
+        "roundly-consulting/enums-for-laravel": "^1.1.0",
+        "roundly-consulting/package-toolkit-for-laravel": "^1.3.0"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
@@ -54,7 +54,7 @@
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
-        "roundly-consulting/testing-for-laravel": "^1.0"
+        "roundly-consulting/testing-for-laravel": "^1.2.1"
     },
     "suggest": {
         "ext-intl": "Locale-aware money formatting and localized input parsing (falls back to a deterministic formatter without it).",
