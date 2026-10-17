@@ -16,6 +16,8 @@ ArchPresets::finalByDefault('RoundlyConsulting\Money', [CurrencyRate::class, Exc
 ArchPresets::swappableModelsAreNotFinal([CurrencyRate::class => 'money.exchange.providers.database.model']);
 ArchPresets::noLocalCryptoPrimitives('RoundlyConsulting\Money');
 ArchPresets::modelsResolveThroughSeam(__DIR__.'/../src', 'Support', ['money.exchange.providers.database.model']);
+// A host swap reaches `CurrencyRate::factory()` too: the factory builds the configured model.
+ArchPresets::factoriesResolveThroughSeam(__DIR__.'/../database/factories', __DIR__.'/../src', 'Support');
 
 // CurrencyRate is reference data with no convenience methods, but a model that ever grows one
 // must delegate to the manager, never to an action.
