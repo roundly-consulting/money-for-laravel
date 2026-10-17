@@ -35,4 +35,13 @@ abstract class TestCase extends PackageTestCase
             'money.exchange.providers.custom.key' => 'sk_test_money_dummy_7f3a',
         ];
     }
+
+    /**
+     * Migrate once per worker and reset only the data between tests. The migrations read
+     * config alone (table name, currency length), which the schema signature already covers.
+     */
+    protected function keepsMigratedSchema(): bool
+    {
+        return true;
+    }
 }
