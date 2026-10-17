@@ -6,6 +6,10 @@ All notable changes to `money-for-laravel` are documented in this file. The form
 
 ## Unreleased
 
+### Fixed
+
+- Factories build the configured model when a host swaps it.
+
 ## 1.0.2 - 2026-10-11
 
 ### Changed

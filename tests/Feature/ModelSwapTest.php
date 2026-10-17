@@ -30,6 +30,20 @@ it('reads rates through the swapped model', function (): void {
     );
 });
 
+/**
+ * The factory named the packaged CurrencyRate, so `CurrencyRate::factory()` built the packaged
+ * class after a host swapped it: the host's model events never ran.
+ */
+it('builds the swapped rate model from the factory', function (): void {
+    config(['money.exchange.providers.database.model' => CustomCurrencyRate::class]);
+    CustomCurrencyRate::resetCreationCount();
+
+    // Distinct pairs: the table is unique per pair and date.
+    expect(CurrencyRate::factory()->pair('EUR', 'USD', '1.0854')->create()::class)->toBe(CustomCurrencyRate::class)
+        ->and(CustomCurrencyRate::factory()->pair('EUR', 'GBP', '0.8612')->create()::class)->toBe(CustomCurrencyRate::class)
+        ->and(CustomCurrencyRate::creationCount())->toBe(2);
+});
+
 it('refuses a rate model that does not extend CurrencyRate with the package exception', function (string $configured): void {
     config(['money.exchange.providers.database.model' => $configured]);
 
