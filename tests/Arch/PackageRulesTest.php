@@ -56,9 +56,22 @@ function packageClasses(): array
     return $classes;
 }
 
-function typeString(?ReflectionType $type): string
+/**
+ * The type as written in the source. PHP 8.5 reflection resolves `self` to the declaring class's
+ * name; these sources always write `self` for their own class, so given that class the name is
+ * mapped back and the API snapshot reads the same on every PHP version.
+ */
+function typeString(?ReflectionType $type, ?string $declaringClass = null): string
 {
-    return $type === null ? '' : (string) $type;
+    if ($type === null) {
+        return '';
+    }
+
+    if ($declaringClass === null) {
+        return (string) $type;
+    }
+
+    return (string) preg_replace('/(?<![\w\\\\])'.preg_quote($declaringClass, '/').'(?![\w\\\\])/', 'self', (string) $type);
 }
 
 /** @return list<string> "Class::method" code tokens, comments stripped */
@@ -210,7 +223,9 @@ function signature(string $class, string $method): array
 {
     $reflection = new ReflectionMethod($class, $method);
 
-    $parameters = array_map(static function (ReflectionParameter $parameter): string {
+    $declaringClass = $reflection->getDeclaringClass()->getName();
+
+    $parameters = array_map(static function (ReflectionParameter $parameter) use ($declaringClass): string {
         $default = '';
 
         if ($parameter->isDefaultValueAvailable()) {
@@ -218,10 +233,10 @@ function signature(string $class, string $method): array
             $default = ' = '.($value instanceof UnitEnum ? $value::class.'::'.$value->name : var_export($value, true));
         }
 
-        return ($parameter->isVariadic() ? '...' : '').$parameter->getName().': '.typeString($parameter->getType()).$default;
+        return ($parameter->isVariadic() ? '...' : '').$parameter->getName().': '.typeString($parameter->getType(), $declaringClass).$default;
     }, $reflection->getParameters());
 
-    return [...$parameters, 'return: '.typeString($reflection->getReturnType())];
+    return [...$parameters, 'return: '.typeString($reflection->getReturnType(), $declaringClass)];
 }
 
 it('rule 5 — pins the API the consumer packages build on', function (): void {
