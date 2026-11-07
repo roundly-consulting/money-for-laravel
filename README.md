@@ -26,7 +26,7 @@ bcmath arithmetic, so there is no float anywhere and no int64 ceiling.
 
 ## Installation
 
-Requires PHP 8.4 (`ext-bcmath`; `ext-intl` for locale-aware formatting) and Laravel 12 or 13.
+Requires PHP 8.4 (`ext-bcmath`; `ext-intl` for locale-aware formatting) and Laravel 13.
 
 ```bash
 composer require roundly-consulting/money-for-laravel
